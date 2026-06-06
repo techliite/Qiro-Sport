@@ -1,0 +1,11 @@
+export default function AccountPage() {
+  return (
+    <div className="p-4 space-y-4">
+      <h2 className="text-lg font-bold">Account</h2>
+      {/* Wallet, transactions, settings — implemented in Phase 0 */}
+      <div className="bg-[#1E293B] rounded-xl p-4 border border-[#334155]">
+        <p className="text-[#94A3B8] text-sm">Account & Wallet — Phase 0</p>
+      </div>
+    </div>
+  )
+}

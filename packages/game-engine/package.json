@@ -1,0 +1,23 @@
+{
+  "name": "@qiro/game-engine",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./dice": "./src/dice.ts",
+    "./football": "./src/football.ts",
+    "./horse-racing": "./src/horse-racing.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@qiro/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}

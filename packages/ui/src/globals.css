@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Qiro Sport Design Tokens ── */
+  --color-primary: #4B6BF1;
+  --color-accent: #7C3AED;
+  --color-background: #0F172A;
+  --color-surface: #1E293B;
+  --color-surface-elevated: #263548;
+  --color-success: #059669;
+  --color-danger: #DC2626;
+  --color-warning: #D97706;
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-border: #334155;
+
+  /* ── Typography ── */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Courier New", monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Numbers, odds, balances always use mono font */
+  .font-mono,
+  [data-odds],
+  [data-balance] {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer utilities {
+  .text-success { color: var(--color-success); }
+  .text-danger  { color: var(--color-danger); }
+  .text-warning { color: var(--color-warning); }
+
+  .bg-surface   { background-color: var(--color-surface); }
+  .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+
+  /* Safe area for mobile bottom navigation */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}

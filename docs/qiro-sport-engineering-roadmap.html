@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qiro Sport — Engineering Execution Roadmap</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --primary: #4B6BF1;
+      --accent: #7C3AED;
+      --bg: #ffffff;
+      --surface: #f8f9fc;
+      --border: #e2e8f0;
+      --success: #059669;
+      --danger: #DC2626;
+      --warning: #D97706;
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+      --text-muted: #94A3B8;
+      --heading-bar: #0F172A;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--text-primary);
+      background: var(--bg);
+      padding: 0;
+    }
+
+    /* COVER PAGE */
+    .cover {
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 60%, #0F172A 100%);
+      color: #F1F5F9;
+      page-break-after: always;
+      padding: 60px;
+      text-align: center;
+    }
+
+    .cover-logo {
+      font-family: 'Inter', sans-serif;
+      font-size: 64px;
+      font-weight: 700;
+      color: #4B6BF1;
+      letter-spacing: -2px;
+      margin-bottom: 8px;
+    }
+
+    .cover-logo span {
+      color: #7C3AED;
+    }
+
+    .cover-subtitle {
+      font-size: 18px;
+      color: #94A3B8;
+      font-weight: 400;
+      margin-bottom: 48px;
+      letter-spacing: 0.5px;
+    }
+
+    .cover-divider {
+      width: 80px;
+      height: 3px;
+      background: linear-gradient(90deg, #4B6BF1, #7C3AED);
+      border-radius: 2px;
+      margin: 0 auto 48px;
+    }
+
+    .cover-title {
+      font-size: 28px;
+      font-weight: 600;
+      color: #F1F5F9;
+      margin-bottom: 12px;
+    }
+
+    .cover-desc {
+      font-size: 15px;
+      color: #94A3B8;
+      max-width: 520px;
+      margin-bottom: 64px;
+    }
+
+    .cover-meta {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+    }
+
+    .cover-meta-item {
+      text-align: center;
+    }
+
+    .cover-meta-item .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #4B6BF1;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .cover-meta-item .value {
+      font-size: 14px;
+      color: #F1F5F9;
+      font-weight: 500;
+    }
+
+    /* PAGE LAYOUT */
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 56px;
+    }
+
+    /* TOC */
+    .toc-page {
+      page-break-after: always;
+    }
+
+    .toc-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 32px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .toc-list {
+      list-style: none;
+    }
+
+    .toc-list li {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .toc-list li .toc-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 500;
+      min-width: 28px;
+    }
+
+    .toc-list li .toc-label {
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .toc-list li .toc-dots {
+      flex: 1;
+      border-bottom: 1px dashed #CBD5E1;
+      margin: 0 8px;
+      margin-bottom: 3px;
+    }
+
+    .toc-list li .toc-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* SECTION HEADERS */
+    .section-header {
+      background: var(--heading-bar);
+      color: #F1F5F9;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      margin-top: 40px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .section-header:first-child { margin-top: 0; }
+
+    h2 {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 16px;
+      margin-top: 32px;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 10px;
+      margin-top: 24px;
+    }
+
+    h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+      margin-top: 18px;
+    }
+
+    p {
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    /* TABLES */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+
+    thead tr {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    thead th {
+      padding: 9px 12px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.3px;
+    }
+
+    tbody tr:nth-child(even) { background: var(--surface); }
+    tbody tr:nth-child(odd) { background: #fff; }
+
+    tbody td {
+      padding: 8px 12px;
+      color: var(--text-secondary);
+      vertical-align: top;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody td:first-child {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* CODE / MONO */
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 6px;
+      color: var(--accent);
+    }
+
+    pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: #0F172A;
+      color: #E2E8F0;
+      border-radius: 6px;
+      padding: 20px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+      line-height: 1.7;
+      border-left: 3px solid var(--primary);
+    }
+
+    pre .comment { color: #64748B; }
+    pre .key { color: #7C3AED; }
+    pre .dir { color: #4B6BF1; }
+    pre .val { color: #059669; }
+
+    /* LISTS */
+    ul, ol {
+      padding-left: 20px;
+      margin-bottom: 14px;
+      color: var(--text-secondary);
+    }
+
+    li { margin-bottom: 5px; }
+
+    li strong { color: var(--text-primary); }
+
+    /* CHECKLIST */
+    .checklist {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .checklist li {
+      padding: 4px 0 4px 24px;
+      position: relative;
+      color: var(--text-secondary);
+      font-size: 12px;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .checklist li::before {
+      content: '☐';
+      position: absolute;
+      left: 0;
+      color: var(--primary);
+      font-size: 13px;
+    }
+
+    /* PHASE CARDS */
+    .phase-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+
+    .phase-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 18px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      color: #fff;
+    }
+
+    .phase-badge {
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .phase-card-header h3 {
+      color: #fff;
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .phase-meta {
+      margin-left: auto;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .phase-meta span {
+      font-size: 11px;
+      opacity: 0.85;
+      background: rgba(255,255,255,0.15);
+      padding: 2px 8px;
+      border-radius: 3px;
+    }
+
+    .phase-card-body {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .phase-col h4 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 10px;
+      margin-top: 0;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .phase-done {
+      padding: 10px 18px;
+      background: #F0FDF4;
+      border-top: 1px solid #BBF7D0;
+      font-size: 12px;
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    .phase-done::before { content: '✓  Done when: '; font-weight: 700; }
+
+    .phase-note {
+      padding: 10px 18px;
+      background: #FFF7ED;
+      border-top: 1px solid #FED7AA;
+      font-size: 12px;
+      color: var(--warning);
+    }
+
+    /* CALLOUT BOXES */
+    .callout {
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      border-left: 4px solid;
+    }
+
+    .callout-warning {
+      background: #FFFBEB;
+      border-color: var(--warning);
+      color: #92400E;
+    }
+
+    .callout-info {
+      background: #EFF6FF;
+      border-color: var(--primary);
+      color: #1E40AF;
+    }
+
+    .callout-success {
+      background: #F0FDF4;
+      border-color: var(--success);
+      color: #065F46;
+    }
+
+    .callout-danger {
+      background: #FEF2F2;
+      border-color: var(--danger);
+      color: #991B1B;
+    }
+
+    .callout strong { display: block; margin-bottom: 4px; font-size: 12px; }
+
+    /* ADJUSTMENT CARDS */
+    .adjustment {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+      background: var(--surface);
+      page-break-inside: avoid;
+    }
+
+    .adjustment-num {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 3px;
+      margin-bottom: 8px;
+    }
+
+    .adjustment h4 {
+      margin-top: 4px;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    .adjustment p { font-size: 12px; margin-bottom: 0; }
+
+    /* SERVICE CARDS */
+    .service-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .service-card {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      background: var(--surface);
+    }
+
+    .service-card .svc-name {
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+    }
+
+    .service-card .svc-role {
+      font-size: 11px;
+      color: var(--primary);
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+
+    .service-card .svc-note {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 7px;
+      border-radius: 3px;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-critical { background: #FEE2E2; color: var(--danger); }
+    .badge-high { background: #FEF3C7; color: var(--warning); }
+    .badge-medium { background: #E0F2FE; color: #0284C7; }
+    .badge-low { background: #F0FDF4; color: var(--success); }
+    .badge-primary { background: #EEF2FF; color: var(--primary); }
+
+    /* RISK TABLE */
+    .risk-critical td:first-child { border-left: 3px solid var(--danger); }
+    .risk-high td:first-child { border-left: 3px solid var(--warning); }
+    .risk-medium td:first-child { border-left: 3px solid #0284C7; }
+
+    /* FOOTER */
+    .footer {
+      margin-top: 48px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .footer strong { color: var(--primary); }
+
+    /* PAGE BREAK UTILITIES */
+    .page-break { page-break-before: always; }
+    .no-break { page-break-inside: avoid; }
+
+    /* PRINT STYLES */
+    @media print {
+      body { font-size: 12px; }
+      .cover { min-height: 100vh; }
+      @page { margin: 0; size: A4; }
+      .page { padding: 36px 48px; }
+    }
+
+    /* TIMELINE */
+    .timeline {
+      position: relative;
+      padding-left: 32px;
+      margin-bottom: 20px;
+    }
+
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 10px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--primary), var(--accent));
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 18px;
+      page-break-inside: avoid;
+    }
+
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -26px;
+      top: 5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+
+    .timeline-week {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 4px;
+    }
+
+    .timeline-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 3px;
+    }
+
+    .timeline-body {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    /* SCHEMA */
+    .schema-block {
+      background: #0F172A;
+      border-radius: 6px;
+      padding: 18px 20px;
+      margin-bottom: 16px;
+      border-left: 3px solid var(--primary);
+    }
+
+    .schema-table-name {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #4B6BF1;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .schema-fields {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .schema-fields li {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94A3B8;
+      margin-bottom: 3px;
+      padding-left: 12px;
+      border-left: 1px solid #1E293B;
+    }
+
+    .schema-fields li .field-name { color: #E2E8F0; }
+    .schema-fields li .field-type { color: #7C3AED; }
+    .schema-fields li .field-note { color: #475569; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<!-- ===================== COVER ===================== -->
+<div class="cover">
+  <div class="cover-logo">Qiro<span>Sport</span></div>
+  <div class="cover-subtitle">Sports Betting + Virtual Games Platform</div>
+  <div class="cover-divider"></div>
+  <div class="cover-title">Engineering Execution Roadmap</div>
+  <p class="cover-desc">
+    Full-stack technical plan covering architecture, stack decisions, phase-by-phase build order,
+    database schema, third-party integrations, and risk mitigations for the MVP.
+  </p>
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="label">Version</div>
+      <div class="value">1.0</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Status</div>
+      <div class="value">Engineering Draft</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Estimated Build</div>
+      <div class="value">13–14 Weeks</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Team Size</div>
+      <div class="value">2 Engineers</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="label">Date</div>
+      <div class="value">June 2026</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== TABLE OF CONTENTS ===================== -->
+<div class="page toc-page">
+  <div class="toc-title">Table of Contents</div>
+  <ul class="toc-list">
+    <li><span class="toc-num">01</span><span class="toc-label">Engineering Adjustments to PRD Roadmap</span><span class="toc-dots"></span><span class="toc-sub">3 key changes</span></li>
+    <li><span class="toc-num">02</span><span class="toc-label">Monorepo Architecture & Project Structure</span><span class="toc-dots"></span><span class="toc-sub">Turborepo layout</span></li>
+    <li><span class="toc-num">03</span><span class="toc-label">Full Tech Stack Decisions</span><span class="toc-dots"></span><span class="toc-sub">Frontend, Backend, Infra</span></li>
+    <li><span class="toc-num">04</span><span class="toc-label">Third-Party Services & Accounts</span><span class="toc-dots"></span><span class="toc-sub">Provision before Day 1</span></li>
+    <li><span class="toc-num">05</span><span class="toc-label">Database Schema</span><span class="toc-dots"></span><span class="toc-sub">All tables, critical constraints</span></li>
+    <li><span class="toc-num">06</span><span class="toc-label">System Architecture Overview</span><span class="toc-dots"></span><span class="toc-sub">Request flow, real-time, schedulers</span></li>
+    <li><span class="toc-num">07</span><span class="toc-label">Phase-by-Phase Execution Plan</span><span class="toc-dots"></span><span class="toc-sub">Pre-Phase 0 through Phase 6</span></li>
+    <li><span class="toc-num">08</span><span class="toc-label">Risks & Engineering Mitigations</span><span class="toc-dots"></span><span class="toc-sub">Financial, operational, technical</span></li>
+    <li><span class="toc-num">09</span><span class="toc-label">Development Workflow & Standards</span><span class="toc-dots"></span><span class="toc-sub">CI, branching, env vars</span></li>
+    <li><span class="toc-num">10</span><span class="toc-label">Pre-Launch Checklist</span><span class="toc-dots"></span><span class="toc-sub">Security, accounts, QA</span></li>
+    <li><span class="toc-num">11</span><span class="toc-label">Post-MVP Roadmap</span><span class="toc-dots"></span><span class="toc-sub">Q3 2026 – Q1 2027</span></li>
+  </ul>
+</div>
+
+<!-- ===================== SECTION 01 ===================== -->
+<div class="page page-break">
+  <div class="section-header">01 &nbsp; Engineering Adjustments to PRD Roadmap</div>
+
+  <p>The PRD roadmap is structurally sound. The phase order — Foundation → Sports → Dice → Virtual Football → Horse Racing → Admin → QA — is the correct sequence. However, three adjustments are made from a pure engineering standpoint. These are not preference changes; they prevent concrete, known failure modes.</p>
+
+  <div class="adjustment">
+    <div class="adjustment-num">ADJUSTMENT 1</div>
+    <h4>WebSocket gateway scaffolded in Phase 0, not Phase 3</h4>
+    <p>The PRD defers real-time infrastructure to Phase 3 (Virtual Football). Retrofitting Socket.IO into an already-built NestJS + Next.js application mid-project causes restructuring across auth guards, module imports, and the client state layer. The WebSocket gateway must be wired as infrastructure in Phase 0 — even if zero events fire — at a cost of one day, saving three days of untangling in Phase 3.</p>
+  </div>
+
+  <div class="adjustment">
+    <div class="adjustment-num">ADJUSTMENT 2</div>
+    <h4>Withdrawal management interface delivered in Phase 0, not Phase 5</h4>
+    <p>The moment real users deposit money in Phase 0, withdrawal requests will arrive. If the operator has no interface to action them, funds are stuck and users lose trust immediately. At minimum, a withdrawal queue view (list + approve/reject + notes) must exist by end of Phase 0. The full admin dashboard — users, financials, game config, risk alerts — remains Phase 5.</p>
+  </div>
+
+  <div class="adjustment">
+    <div class="adjustment-num">ADJUSTMENT 3</div>
+    <h4>Game engine math written and unit-tested before Phase 3 begins</h4>
+    <p>The Poisson scorer (Virtual Football), weighted finishing order (Horse Racing), and Dice payout formula live in <span class="mono">packages/game-engine</span> and must be proven correct in isolation before the scheduler wiring begins. If math bugs surface inside a running scheduler, debugging is three times harder. This is a half-day of focused work that protects three weeks of Phase 3 build confidence.</p>
+  </div>
+
+  <div class="callout callout-success">
+    <strong>Everything else is kept as-is</strong>
+    Stack choices, phase ordering, database approach, third-party services, and timing estimates all stand as specified in the original roadmap.
+  </div>
+</div>
+
+<!-- ===================== SECTION 02 ===================== -->
+<div class="page page-break">
+  <div class="section-header">02 &nbsp; Monorepo Architecture & Project Structure</div>
+
+  <p>The project uses a <strong>Turborepo monorepo with pnpm workspaces</strong>. This keeps shared types, the game engine, and the Prisma client in sync across all apps without duplication, and enables a single CI pipeline to lint, typecheck, and test everything together.</p>
+
+  <pre><span class="dir">qiro-sport/</span>
+├── <span class="dir">apps/</span>
+│   ├── <span class="dir">web/</span>              <span class="comment"># Next.js 15 — player-facing PWA (mobile-first)</span>
+│   ├── <span class="dir">admin/</span>            <span class="comment"># Next.js 15 — back office dashboard (operator only)</span>
+│   └── <span class="dir">api/</span>              <span class="comment"># NestJS — REST API + WebSocket gateway + BullMQ workers</span>
+│
+├── <span class="dir">packages/</span>
+│   ├── <span class="dir">db/</span>               <span class="comment"># Prisma schema, migrations, generated client</span>
+│   ├── <span class="dir">types/</span>            <span class="comment"># Shared TypeScript interfaces (User, Bet, Round, etc.)</span>
+│   ├── <span class="dir">game-engine/</span>      <span class="comment"># RNG logic, payout calculators, Poisson scorer — fully tested</span>
+│   └── <span class="dir">ui/</span>               <span class="comment"># Shared Shadcn/Tailwind component base (used by web + admin)</span>
+│
+├── <span class="val">turbo.json</span>
+├── <span class="val">pnpm-workspace.yaml</span>
+├── <span class="val">.github/workflows/ci.yml</span>
+└── <span class="val">package.json</span></pre>
+
+  <h3>Key Monorepo Rules</h3>
+  <ul>
+    <li><span class="mono">packages/db</span> owns the Prisma schema exclusively. No other package writes migrations.</li>
+    <li><span class="mono">packages/game-engine</span> has zero runtime dependencies on NestJS or Next.js. It is pure TypeScript with no side effects — importable and testable anywhere.</li>
+    <li><span class="mono">apps/admin</span> deploys to a separate subdomain (<span class="mono">admin.qirosport.com</span>). It is never bundled into the player app.</li>
+    <li>Turbo pipeline: <span class="mono">build</span> depends on <span class="mono">db#generate</span> so the Prisma client is always fresh before building the API or either web app.</li>
+    <li>All environment secrets are split: <span class="mono">apps/api/.env</span> for backend secrets, <span class="mono">apps/web/.env.local</span> for public Next.js vars prefixed <span class="mono">NEXT_PUBLIC_</span>.</li>
+  </ul>
+
+  <h3>App Boundaries</h3>
+  <table>
+    <thead><tr><th>App / Package</th><th>Deployed To</th><th>Consumers</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>apps/web</td><td>Vercel</td><td>End users</td><td>Mobile-first PWA. Dark mode default.</td></tr>
+      <tr><td>apps/admin</td><td>Vercel (separate project)</td><td>Operator only</td><td>IP-whitelist enforced. No public indexing.</td></tr>
+      <tr><td>apps/api</td><td>Railway</td><td>Both web apps</td><td>REST + WebSocket + BullMQ workers in one process.</td></tr>
+      <tr><td>packages/db</td><td>—</td><td>api only</td><td>Prisma client imported only in the API.</td></tr>
+      <tr><td>packages/types</td><td>—</td><td>web, admin, api</td><td>Shared request/response shapes and enums.</td></tr>
+      <tr><td>packages/game-engine</td><td>—</td><td>api only at runtime</td><td>Also imported in test suite for unit testing.</td></tr>
+      <tr><td>packages/ui</td><td>—</td><td>web, admin</td><td>Shared Shadcn components with design tokens applied.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===================== SECTION 03 ===================== -->
+<div class="page page-break">
+  <div class="section-header">03 &nbsp; Full Tech Stack Decisions</div>
+
+  <h2>3.1 Frontend (apps/web + apps/admin)</h2>
+  <table>
+    <thead><tr><th>Concern</th><th>Choice</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>Next.js 15 (App Router)</td><td>SSR for home/fixtures for fast initial paint; CSR client components for game screens. Natural Vercel fit.</td></tr>
+      <tr><td>UI Components</td><td>Shadcn/UI + Tailwind CSS</td><td>Unstyled components with design tokens applied. Fast iteration, full control. No third-party component lock-in.</td></tr>
+      <tr><td>Client State</td><td>Zustand</td><td>Bet slip, auth state, wallet balance. Lightweight, no boilerplate.</td></tr>
+      <tr><td>Server State</td><td>TanStack Query v5</td><td>Odds fetching with background refetch, stale-while-revalidate. Handles cache + loading states cleanly.</td></tr>
+      <tr><td>Real-time</td><td>Socket.IO client</td><td>Auto-reconnect, room subscriptions for virtual game events. Pairs with NestJS Socket.IO gateway.</td></tr>
+      <tr><td>Forms</td><td>React Hook Form + Zod</td><td>Auth forms, stake inputs, withdrawal. Zod schemas shared from packages/types.</td></tr>
+      <tr><td>Animations</td><td>Framer Motion (minimal)</td><td>Dice roll reveal, result transitions. Kept minimal — mobile performance is priority.</td></tr>
+      <tr><td>Fonts</td><td>Inter + JetBrains Mono</td><td>Inter for all UI text, JetBrains Mono for odds/balances/scores per design spec.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3.2 Backend (apps/api)</h2>
+  <table>
+    <thead><tr><th>Concern</th><th>Choice</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr><td>Framework</td><td>NestJS</td><td>Opinionated module structure maps cleanly to domains: auth, wallet, sports, virtual, admin. Built-in DI, guards, interceptors.</td></tr>
+      <tr><td>ORM</td><td>Prisma</td><td>Type-safe queries, migration-first, excellent PostgreSQL support. Generated client shared via packages/db.</td></tr>
+      <tr><td>Primary Database</td><td>PostgreSQL</td><td>ACID transactions required for financial data. Row-level locking for wallet mutations.</td></tr>
+      <tr><td>Cache / Sessions</td><td>Redis (Upstash)</td><td>Odds cache (5-min TTL), refresh tokens, rate limit counters, game state, login lockouts.</td></tr>
+      <tr><td>Job Queues</td><td>BullMQ</td><td>Virtual game schedulers (repeating jobs), settlement workers, reconciliation cron, risk alert jobs.</td></tr>
+      <tr><td>WebSockets</td><td>Socket.IO (NestJS Gateway)</td><td>Pushes game state to subscribed clients. Clients join rooms per game/league. No client polling.</td></tr>
+      <tr><td>Validation</td><td>class-validator + Zod</td><td>class-validator on NestJS DTOs; Zod for shared schemas in packages/types.</td></tr>
+      <tr><td>Auth</td><td>JWT (access 15min) + Refresh Token</td><td>Access tokens short-lived. Refresh tokens stored in Redis with rotation — old token invalidated on each refresh.</td></tr>
+      <tr><td>Password Hashing</td><td>bcrypt (rounds: 12)</td><td>Industry standard. 12 rounds is secure on modern hardware without being excessively slow.</td></tr>
+      <tr><td>Rate Limiting</td><td>NestJS Throttler + Redis store</td><td>Per-IP and per-user limits on auth endpoints, OTP sends, bet placement.</td></tr>
+      <tr><td>HTTP Client</td><td>Axios (NestJS HttpModule)</td><td>For TheOddsAPI, Paystack, Termii calls from the API.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3.3 Infrastructure</h2>
+  <table>
+    <thead><tr><th>Service</th><th>Provider</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>API Hosting</td><td>Railway</td><td>NestJS + BullMQ workers. Simple deploy from GitHub. Postgres + Redis also on Railway for MVP.</td></tr>
+      <tr><td>Web Hosting</td><td>Vercel</td><td>web + admin as separate Vercel projects. Automatic preview deployments per PR.</td></tr>
+      <tr><td>PostgreSQL</td><td>Railway Postgres</td><td>Managed, automatic backups. Upgrade to Neon for autoscaling post-MVP.</td></tr>
+      <tr><td>Redis</td><td>Upstash</td><td>Serverless, pay-per-request. Avoid Railway Redis at scale — Upstash is cheaper for low-traffic MVP.</td></tr>
+      <tr><td>CDN / Security</td><td>Cloudflare</td><td>DNS, SSL, WAF, DDoS protection. Admin subdomain blocked to non-whitelisted IPs via Cloudflare firewall rule.</td></tr>
+      <tr><td>Error Tracking</td><td>Sentry</td><td>Installed in both Next.js apps and NestJS. Free tier covers MVP volume.</td></tr>
+      <tr><td>Analytics</td><td>PostHog</td><td>Session duration, retention, funnel tracking. Directly measures PRD success metrics.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===================== SECTION 04 ===================== -->
+<div class="page page-break">
+  <div class="section-header">04 &nbsp; Third-Party Services & Accounts — Provision Before Day 1</div>
+
+  <div class="callout callout-warning">
+    <strong>Action Required Before Coding Starts</strong>
+    All accounts below must be created, verified, and API keys secured before Phase 0 begins. Waiting for Paystack approval mid-build has caused project delays on similar platforms.
+  </div>
+
+  <div class="service-grid">
+    <div class="service-card">
+      <div class="svc-name">Paystack</div>
+      <div class="svc-role">Deposits, withdrawals, bank verification</div>
+      <div class="svc-note">Register as business account. Use "entertainment/fintech" category — avoid "gambling" to reduce merchant rejection risk. Collect both public and secret keys. Set up webhook endpoint before testing.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Flutterwave</div>
+      <div class="svc-role">Payment fallback</div>
+      <div class="svc-note">Create account and keep API keys on standby. If Paystack declines or freezes the merchant account, Flutterwave is the drop-in replacement. Do not wait until Paystack fails to register.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Termii</div>
+      <div class="svc-role">SMS OTP delivery</div>
+      <div class="svc-note">Nigerian-focused SMS gateway. Test delivery to actual Nigerian numbers (not Twilio — higher delivery rates locally). Top up credit before launch. Set sender ID to "QiroSport".</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">TheOddsAPI</div>
+      <div class="svc-role">Real football odds + match scores</div>
+      <div class="svc-note">Confirm NPFL (Nigerian Premier League) is available on the plan selected. Free tier is insufficient for 5-min polling. Check Starter plan limits against expected daily request volume (~300 requests/day).</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Railway</div>
+      <div class="svc-role">API hosting + PostgreSQL + Redis</div>
+      <div class="svc-note">Create project. Add PostgreSQL plugin and Redis plugin. Set all environment variables in Railway dashboard. Enable automatic GitHub deploys from main branch.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Vercel</div>
+      <div class="svc-role">Next.js hosting (web + admin)</div>
+      <div class="svc-note">Create two separate Vercel projects: one for apps/web, one for apps/admin. Configure monorepo root directory for each. Set custom domains after DNS is on Cloudflare.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Cloudflare</div>
+      <div class="svc-role">CDN, DNS, DDoS, firewall</div>
+      <div class="svc-note">Transfer domain DNS to Cloudflare. Create firewall rule: block all traffic to admin.qirosport.com from IPs not in the operator whitelist. Enable WAF on free tier.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">Sentry</div>
+      <div class="svc-role">Error tracking</div>
+      <div class="svc-note">Create three projects: web (Next.js), admin (Next.js), api (Node.js). Free tier covers 5K errors/month — sufficient for MVP. Set up Slack alerts for unhandled exceptions.</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">PostHog</div>
+      <div class="svc-role">Product analytics</div>
+      <div class="svc-note">Install in apps/web. Track: registration, first deposit, bet placed, virtual game played, session duration. These map directly to the PRD success metrics (WAU, retention, session duration).</div>
+    </div>
+    <div class="service-card">
+      <div class="svc-name">GitHub</div>
+      <div class="svc-role">Version control + CI</div>
+      <div class="svc-note">Monorepo in a single GitHub repository. Branch protection on main: require PR + passing CI. GitHub Actions for lint, typecheck, and unit tests on every PR.</div>
+    </div>
+  </div>
+
+  <h3>API Keys Checklist</h3>
+  <ul class="checklist">
+    <li>Paystack — Public Key + Secret Key + Webhook Secret</li>
+    <li>Flutterwave — Public Key + Secret Key (standby)</li>
+    <li>Termii — API Key + Sender ID approved</li>
+    <li>TheOddsAPI — API Key + confirmed NPFL access</li>
+    <li>Railway — PostgreSQL connection string + Redis URL</li>
+    <li>Sentry — DSN for web, admin, and api projects</li>
+    <li>PostHog — Project API key</li>
+    <li>JWT secrets — two random 64-char strings (access + refresh, generated via openssl)</li>
+  </ul>
+</div>
+
+<!-- ===================== SECTION 05 ===================== -->
+<div class="page page-break">
+  <div class="section-header">05 &nbsp; Database Schema</div>
+
+  <div class="callout callout-danger">
+    <strong>Critical Financial Rule</strong>
+    All monetary values are stored as integers in <strong>kobo</strong> (1 NGN = 100 kobo). Never store Naira as a float. All payout calculations use integer arithmetic with floor rounding. This is non-negotiable.
+  </div>
+
+  <div class="callout callout-danger">
+    <strong>Immutable Ledger Rule</strong>
+    The <code>transactions</code> table must never have UPDATE or DELETE operations. Every wallet change — deposit, stake, win, refund — is a new append-only row. Wallet balance is the authoritative running balance on the latest transaction row.
+  </div>
+
+  <h3>Core Tables</h3>
+
+  <div class="schema-block">
+    <div class="schema-table-name">users</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">phone</span> &nbsp;<span class="field-type">varchar(15) UNIQUE NOT NULL</span></li>
+      <li><span class="field-name">username</span> &nbsp;<span class="field-type">varchar(30) UNIQUE NOT NULL</span></li>
+      <li><span class="field-name">password_hash</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">dob</span> &nbsp;<span class="field-type">date NOT NULL</span> &nbsp;<span class="field-note">-- 18+ gate enforced at application layer</span></li>
+      <li><span class="field-name">phone_verified</span> &nbsp;<span class="field-type">boolean DEFAULT false</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(ACTIVE, SUSPENDED, BANNED)</span> &nbsp;<span class="field-note">DEFAULT ACTIVE</span></li>
+      <li><span class="field-name">failed_login_attempts</span> &nbsp;<span class="field-type">int DEFAULT 0</span></li>
+      <li><span class="field-name">locked_until</span> &nbsp;<span class="field-type">timestamptz</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">wallets</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">user_id</span> &nbsp;<span class="field-type">uuid UNIQUE REFERENCES users(id)</span> &nbsp;<span class="field-note">-- 1:1 with user</span></li>
+      <li><span class="field-name">balance_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL DEFAULT 0</span> &nbsp;<span class="field-note">-- CHECK (balance_kobo >= 0)</span></li>
+      <li><span class="field-name">updated_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">transactions &nbsp;<span style="color:#475569;font-size:10px">-- APPEND ONLY. No UPDATE. No DELETE.</span></div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">wallet_id</span> &nbsp;<span class="field-type">uuid REFERENCES wallets(id)</span></li>
+      <li><span class="field-name">type</span> &nbsp;<span class="field-type">enum(DEPOSIT, WITHDRAW, STAKE, WIN, REFUND, ADJUSTMENT)</span></li>
+      <li><span class="field-name">amount_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">running_balance_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">ref</span> &nbsp;<span class="field-type">text UNIQUE</span> &nbsp;<span class="field-note">-- Paystack ref, bet ID, etc.</span></li>
+      <li><span class="field-name">metadata</span> &nbsp;<span class="field-type">jsonb</span> &nbsp;<span class="field-note">-- game type, bet ID, Paystack data</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <h3>Betting Tables</h3>
+
+  <div class="schema-block">
+    <div class="schema-table-name">sport_bets</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">user_id</span> &nbsp;<span class="field-type">uuid REFERENCES users(id)</span></li>
+      <li><span class="field-name">stake_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">total_odds</span> &nbsp;<span class="field-type">decimal(10,4) NOT NULL</span></li>
+      <li><span class="field-name">potential_win_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">actual_win_kobo</span> &nbsp;<span class="field-type">bigint</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(PENDING, WON, LOST, VOID)</span></li>
+      <li><span class="field-name">settled_at</span> &nbsp;<span class="field-type">timestamptz</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">sport_selections</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">bet_id</span> &nbsp;<span class="field-type">uuid REFERENCES sport_bets(id)</span></li>
+      <li><span class="field-name">fixture_id</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- TheOddsAPI fixture ID</span></li>
+      <li><span class="field-name">market</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- h2h, totals, btts, double_chance</span></li>
+      <li><span class="field-name">pick</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- "home", "draw", "away", "over", etc.</span></li>
+      <li><span class="field-name">odds_decimal</span> &nbsp;<span class="field-type">decimal(8,4) NOT NULL</span> &nbsp;<span class="field-note">-- locked at bet time</span></li>
+      <li><span class="field-name">result</span> &nbsp;<span class="field-type">enum(PENDING, WON, LOST, VOID)</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">virtual_bets</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">user_id</span> &nbsp;<span class="field-type">uuid REFERENCES users(id)</span></li>
+      <li><span class="field-name">game_type</span> &nbsp;<span class="field-type">enum(DICE, VIRTUAL_FOOTBALL, HORSE_RACING)</span></li>
+      <li><span class="field-name">round_id</span> &nbsp;<span class="field-type">uuid</span> &nbsp;<span class="field-note">-- FK to relevant round table</span></li>
+      <li><span class="field-name">market</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">pick</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">odds_decimal</span> &nbsp;<span class="field-type">decimal(8,4) NOT NULL</span></li>
+      <li><span class="field-name">stake_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">payout_kobo</span> &nbsp;<span class="field-type">bigint</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(PENDING, WON, LOST)</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <h3>Virtual Game Tables</h3>
+
+  <div class="schema-block">
+    <div class="schema-table-name">virtual_football_rounds</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">league</span> &nbsp;<span class="field-type">enum(A, B)</span></li>
+      <li><span class="field-name">home_team_id</span> &nbsp;<span class="field-type">int REFERENCES virtual_teams(id)</span></li>
+      <li><span class="field-name">away_team_id</span> &nbsp;<span class="field-type">int REFERENCES virtual_teams(id)</span></li>
+      <li><span class="field-name">home_score</span> &nbsp;<span class="field-type">int</span></li>
+      <li><span class="field-name">away_score</span> &nbsp;<span class="field-type">int</span></li>
+      <li><span class="field-name">half_time_home</span> &nbsp;<span class="field-type">int</span></li>
+      <li><span class="field-name">half_time_away</span> &nbsp;<span class="field-type">int</span></li>
+      <li><span class="field-name">events</span> &nbsp;<span class="field-type">jsonb</span> &nbsp;<span class="field-note">-- [{minute, type, team}] goal/red card events</span></li>
+      <li><span class="field-name">rng_seed_hash</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- SHA256(seed) committed before round</span></li>
+      <li><span class="field-name">rng_seed</span> &nbsp;<span class="field-type">text</span> &nbsp;<span class="field-note">-- revealed after settlement</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(UPCOMING, BETTING_OPEN, BETTING_CLOSED, IN_PROGRESS, SETTLED)</span></li>
+      <li><span class="field-name">cycle_at</span> &nbsp;<span class="field-type">timestamptz NOT NULL</span> &nbsp;<span class="field-note">-- scheduled kickoff time</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">virtual_teams</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">serial PRIMARY KEY</span></li>
+      <li><span class="field-name">name</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">attack</span> &nbsp;<span class="field-type">decimal(4,2) NOT NULL</span> &nbsp;<span class="field-note">-- 1.0 to 10.0</span></li>
+      <li><span class="field-name">defense</span> &nbsp;<span class="field-type">decimal(4,2) NOT NULL</span> &nbsp;<span class="field-note">-- 1.0 to 10.0</span></li>
+      <li><span class="field-name">form_weight</span> &nbsp;<span class="field-type">decimal(4,3) DEFAULT 0.500</span> &nbsp;<span class="field-note">-- 0.1 to 1.0, drifts after each match</span></li>
+      <li><span class="field-name">league</span> &nbsp;<span class="field-type">enum(A, B)</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">horse_race_rounds</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">race_number</span> &nbsp;<span class="field-type">int NOT NULL</span> &nbsp;<span class="field-note">-- daily sequence, resets at midnight WAT</span></li>
+      <li><span class="field-name">horse_ids</span> &nbsp;<span class="field-type">int[] NOT NULL</span> &nbsp;<span class="field-note">-- 8 drawn horses</span></li>
+      <li><span class="field-name">finishing_order</span> &nbsp;<span class="field-type">int[]</span> &nbsp;<span class="field-note">-- horse IDs in finish order [1st, 2nd, 3rd...]</span></li>
+      <li><span class="field-name">rng_seed_hash</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">rng_seed</span> &nbsp;<span class="field-type">text</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(UPCOMING, BETTING_OPEN, BETTING_CLOSED, IN_PROGRESS, SETTLED)</span></li>
+      <li><span class="field-name">cycle_at</span> &nbsp;<span class="field-type">timestamptz NOT NULL</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">virtual_horses</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">serial PRIMARY KEY</span></li>
+      <li><span class="field-name">name</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">jockey</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">base_rating</span> &nbsp;<span class="field-type">decimal(5,2) NOT NULL</span> &nbsp;<span class="field-note">-- fixed reference rating</span></li>
+      <li><span class="field-name">current_rating</span> &nbsp;<span class="field-type">decimal(5,2) NOT NULL</span> &nbsp;<span class="field-note">-- drifts after each race</span></li>
+      <li><span class="field-name">form</span> &nbsp;<span class="field-type">int[]</span> &nbsp;<span class="field-note">-- last 5 finishing positions [3,1,2,5,1]</span></li>
+    </ul>
+  </div>
+
+  <h3>Admin & Config Tables</h3>
+
+  <div class="schema-block">
+    <div class="schema-table-name">withdrawal_requests</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">user_id</span> &nbsp;<span class="field-type">uuid REFERENCES users(id)</span></li>
+      <li><span class="field-name">amount_kobo</span> &nbsp;<span class="field-type">bigint NOT NULL</span></li>
+      <li><span class="field-name">bank_code</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">account_number</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">account_name</span> &nbsp;<span class="field-type">text</span> &nbsp;<span class="field-note">-- from Paystack bank verification</span></li>
+      <li><span class="field-name">transfer_recipient_code</span> &nbsp;<span class="field-type">text</span> &nbsp;<span class="field-note">-- Paystack recipient code</span></li>
+      <li><span class="field-name">status</span> &nbsp;<span class="field-type">enum(PENDING, APPROVED, REJECTED, PAID)</span></li>
+      <li><span class="field-name">reviewed_by</span> &nbsp;<span class="field-type">uuid REFERENCES admin_users(id)</span></li>
+      <li><span class="field-name">notes</span> &nbsp;<span class="field-type">text</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">game_config</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">serial PRIMARY KEY</span></li>
+      <li><span class="field-name">game_type</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- DICE, VIRTUAL_FOOTBALL, HORSE_RACING, SPORTS, GLOBAL</span></li>
+      <li><span class="field-name">key</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- min_stake_kobo, max_stake_kobo, house_edge, suspended</span></li>
+      <li><span class="field-name">value</span> &nbsp;<span class="field-type">text NOT NULL</span> &nbsp;<span class="field-note">-- always stored as string, parsed by consumer</span></li>
+      <li><span class="field-name">updated_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+
+  <div class="schema-block">
+    <div class="schema-table-name">admin_users</div>
+    <ul class="schema-fields">
+      <li><span class="field-name">id</span> &nbsp;<span class="field-type">uuid PRIMARY KEY</span></li>
+      <li><span class="field-name">username</span> &nbsp;<span class="field-type">text UNIQUE NOT NULL</span></li>
+      <li><span class="field-name">password_hash</span> &nbsp;<span class="field-type">text NOT NULL</span></li>
+      <li><span class="field-name">ip_whitelist</span> &nbsp;<span class="field-type">text[]</span> &nbsp;<span class="field-note">-- allowed IP addresses</span></li>
+      <li><span class="field-name">created_at</span> &nbsp;<span class="field-type">timestamptz DEFAULT now()</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===================== SECTION 06 ===================== -->
+<div class="page page-break">
+  <div class="section-header">06 &nbsp; System Architecture Overview</div>
+
+  <h2>6.1 Request Flow</h2>
+  <pre>
+Browser (Next.js PWA — Vercel)
+    │
+    ├─── REST API calls ──────────────────► NestJS (Railway)
+    │    (auth, bets, wallet, odds)              │
+    │                                            ├── PostgreSQL (Railway)
+    └─── WebSocket connection ───────────────────┤     All persistent data
+         (game events, countdowns,              ├── Redis (Upstash)
+          result pushes)                        │     Sessions, cache, rate limits
+                                                │
+                                           BullMQ Workers (same process)
+                                                │
+                                    ┌───────────┼───────────┐
+                                    │           │           │
+                               VF League A  VF League B  Horse Racing
+                               (every 4m)  (every 4m,   (every 3m)
+                                           offset 2m)
+                                    │
+                               Odds Poller
+                               (every 5m — TheOddsAPI)
+                                    │
+                               Settlement Worker
+                               (polls scores, settles bets)
+                                    │
+                               Reconciliation Cron
+                               (hourly — wallet integrity check)</pre>
+
+  <h2>6.2 WebSocket Event Architecture</h2>
+  <p>Clients subscribe to rooms on connection. The server pushes events; the client never polls for game state. This is critical for the 4-minute and 3-minute game cycles where many users need simultaneous updates.</p>
+
+  <table>
+    <thead><tr><th>Room</th><th>Events Published</th><th>Subscribers</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">vf:league-a</span></td><td>upcoming, betting_open, halfTime, result, standings</td><td>All users on Virtual Football tab, League A</td></tr>
+      <tr><td><span class="mono">vf:league-b</span></td><td>upcoming, betting_open, halfTime, result, standings</td><td>All users on Virtual Football tab, League B</td></tr>
+      <tr><td><span class="mono">horse-racing</span></td><td>race_card, betting_open, in_progress, result</td><td>All users on Horse Racing tab</td></tr>
+      <tr><td><span class="mono">user:[userId]</span></td><td>balance_updated, bet_settled, withdrawal_status</td><td>Single user's private channel</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6.3 Virtual Game Cycle — State Machine</h2>
+  <pre>
+UPCOMING ──(T-90s)──► BETTING_OPEN ──(T-15s)──► BETTING_CLOSED
+                                                       │
+                                          RNG seed committed + result generated
+                                          (result held — not revealed yet)
+                                                       │
+                                               IN_PROGRESS
+                                          (VF: half-time reveal at +30s)
+                                          (HR: "race in progress" 30s delay)
+                                                       │
+                                                  SETTLED
+                                          (all bets settled, wallets credited,
+                                           seed revealed, next round published)</pre>
+
+  <div class="callout callout-warning">
+    <strong>Scheduler Resilience</strong>
+    On API startup, the scheduler must query for any rounds stuck in BETTING_OPEN, BETTING_CLOSED, or IN_PROGRESS state and either resume them or mark them VOID with full refunds. A crashed server mid-cycle must not leave user funds in limbo.
+  </div>
+
+  <h2>6.4 Wallet Mutation Safety</h2>
+  <pre>
+<span class="comment">-- Every wallet debit/credit follows this pattern inside a DB transaction:</span>
+
+BEGIN;
+  SELECT * FROM wallets WHERE user_id = $userId FOR UPDATE;
+  <span class="comment">-- ↑ Row-level lock. Prevents concurrent mutations on the same wallet.</span>
+
+  INSERT INTO transactions (wallet_id, type, amount_kobo, running_balance_kobo, ref)
+  VALUES ($walletId, 'STAKE', $amount, $newBalance, $ref);
+
+  UPDATE wallets SET balance_kobo = $newBalance, updated_at = now()
+  WHERE user_id = $userId;
+COMMIT;</pre>
+</div>
+
+<!-- ===================== SECTION 07 ===================== -->
+<div class="page page-break">
+  <div class="section-header">07 &nbsp; Phase-by-Phase Execution Plan</div>
+
+  <div class="callout callout-info">
+    <strong>Total Estimated Duration: 13–14 weeks (2-person team)</strong>
+    Phases run sequentially. Each phase produces a working, deployable increment. The Pre-Phase 0 scaffolding is 2–3 days and is prerequisite to everything.
+  </div>
+
+  <!-- PRE-PHASE 0 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PRE-PHASE 0</div>
+      <h3>Monorepo Scaffolding & Infrastructure Setup</h3>
+      <div class="phase-meta"><span>2–3 Days</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Repository & Config</h4>
+        <ul class="checklist">
+          <li>Init Turborepo with pnpm workspaces</li>
+          <li>Scaffold apps/api (NestJS), apps/web, apps/admin (Next.js 15)</li>
+          <li>Create packages/db, packages/types, packages/game-engine, packages/ui</li>
+          <li>Configure TypeScript strict mode across all packages</li>
+          <li>Configure ESLint + Prettier with shared config</li>
+          <li>Set up GitHub Actions CI: lint → typecheck → test on PR</li>
+          <li>Configure Turbo pipeline (build depends on db#generate)</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Infrastructure & Design</h4>
+        <ul class="checklist">
+          <li>Provision Railway: PostgreSQL + Redis + API service</li>
+          <li>Create two Vercel projects: web + admin</li>
+          <li>Configure Cloudflare DNS for domain</li>
+          <li>Set up Sentry (3 projects) and PostHog</li>
+          <li>Apply Tailwind design tokens (PRD color palette, Inter + JetBrains Mono)</li>
+          <li>Configure Shadcn dark mode as default in packages/ui</li>
+          <li>Wire WebSocket gateway skeleton in NestJS (Adjustment #1)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Repo builds, deploys to Railway and Vercel, WebSocket gateway reachable</div>
+  </div>
+
+  <!-- PHASE 0 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 0</div>
+      <h3>Foundation — Auth, Wallet, Payments</h3>
+      <div class="phase-meta"><span>2 Weeks</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend</h4>
+        <ul class="checklist">
+          <li>AuthModule: phone registration, Termii OTP send/verify</li>
+          <li>JWT access (15min) + refresh token (Redis, rotation)</li>
+          <li>Age gate (reject DOB under 18)</li>
+          <li>5 failed login attempts → 15-min Redis lockout</li>
+          <li>3 OTP resend attempts per session</li>
+          <li>WalletModule: create on registration, debit/credit with SELECT FOR UPDATE</li>
+          <li>TransactionModule: append-only ledger, running balance</li>
+          <li>Paystack: initiate charge, webhook handler + HMAC-SHA512 verification</li>
+          <li>Idempotency on deposit webhook (unique ref constraint)</li>
+          <li>Paystack bank account verification endpoint</li>
+          <li>Withdrawal request creation (Adjustment #2 — basic queue view)</li>
+          <li>Hourly reconciliation BullMQ cron + Sentry alert on mismatch</li>
+          <li>Prisma: users, wallets, transactions, withdrawal_requests migrations</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (web)</h4>
+        <ul class="checklist">
+          <li>Register screen: phone → OTP verify → password + DOB</li>
+          <li>Login screen with lockout messaging</li>
+          <li>Next.js middleware JWT guard for protected routes</li>
+          <li>5-tab bottom navigation shell (tabs without content)</li>
+          <li>Wallet balance banner (global, auto-refreshes)</li>
+          <li>Deposit flow: Paystack Inline popup → success state</li>
+          <li>Withdrawal form: bank code + account + amount</li>
+          <li>Account screen: balance, transaction history, withdrawal history</li>
+          <li>Admin: withdrawal queue list + approve/reject action</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">User can register, verify phone, deposit via Paystack, view balance, request withdrawal. Operator can approve withdrawals.</div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 1</div>
+      <h3>Real Football Betting</h3>
+      <div class="phase-meta"><span>2 Weeks</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend</h4>
+        <ul class="checklist">
+          <li>TheOddsAPI module: poll odds every 5min via BullMQ repeating job</li>
+          <li>Cache odds in Redis (5-min TTL, stale fallback to 2h)</li>
+          <li>Fixture list endpoint with league filter</li>
+          <li>Bet placement: validate selections (≤10), check odds freshness (&lt;10min), debit wallet in transaction</li>
+          <li>Odds locked at bet time (stored on sport_selections)</li>
+          <li>Accumulator payout: multiply all odds × stake, floor to kobo</li>
+          <li>Max accumulator payout cap from game_config</li>
+          <li>Settlement worker: poll scores after match end, evaluate outcomes</li>
+          <li>Void handler: postponed/cancelled fixtures → refund all stakes</li>
+          <li>Admin: sport bets list with status filter + manual void endpoint</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (web)</h4>
+        <ul class="checklist">
+          <li>Home screen: upcoming fixtures horizontal strip</li>
+          <li>League filter tabs (EPL, La Liga, Serie A, Bundesliga, Ligue 1, AFCON, NPFL)</li>
+          <li>Popular matches grid with 1X2 quick-add buttons</li>
+          <li>All 4 markets: 1X2, BTTS, O/U 2.5, Double Chance</li>
+          <li>Floating bet slip: Zustand state, persistent across tabs</li>
+          <li>Real-time potential winnings calculation as selections added</li>
+          <li>Confirmation modal before bet submit</li>
+          <li>Bet history page: filter pending/won/lost/void</li>
+          <li>Odds change indicator (highlight if odds updated since added)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">First real football bet placed and settled automatically within 60 seconds of full time.</div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 2</div>
+      <h3>Dice Game</h3>
+      <div class="phase-meta"><span>1 Week</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend + Game Engine</h4>
+        <ul class="checklist">
+          <li>packages/game-engine: Dice payout formula (0.98 / win_probability)</li>
+          <li>RNG: crypto.randomBytes → uniform [0,100] mapping (rejection sampling)</li>
+          <li>Provably fair: commit SHA256(seed) before roll, reveal after</li>
+          <li>Roll endpoint: validate threshold (2–98), direction, stake; compute result; debit/credit wallet in transaction</li>
+          <li>Auto-bet endpoint: server-side loop up to N rolls, stops on insufficient balance</li>
+          <li>Min/max stake from game_config</li>
+          <li>Unit tests for payout formula and RNG distribution</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (web)</h4>
+        <ul class="checklist">
+          <li>Dice screen: full-width draggable threshold slider (Shadcn Slider)</li>
+          <li>Roll Over / Under toggle</li>
+          <li>Live win probability + multiplier update as slider moves</li>
+          <li>Quick stake presets (₦100, ₦500, ₦1K, ₦5K) + custom input</li>
+          <li>Roll button → result reveal animation (&lt;500ms, Framer Motion)</li>
+          <li>Last 10 results strip (green/red chips)</li>
+          <li>Auto-bet modal: set roll count, start/stop controls</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Dice game live with instant results, auto-bet, and provably fair audit trail.</div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 3</div>
+      <h3>Virtual Football — Highest Complexity Phase</h3>
+      <div class="phase-meta"><span>3 Weeks</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend + Game Engine</h4>
+        <ul class="checklist">
+          <li>packages/game-engine: Poisson scorer, goal time generator, red card logic (Adjustment #3 — tested before Phase 3 scheduler build)</li>
+          <li>Odds generation from team ratings + form weight + house margin</li>
+          <li>Seed 16 teams (League A + B) into DB</li>
+          <li>VirtualFootballScheduler: BullMQ repeating job per league, 4-min cycle</li>
+          <li>State machine: UPCOMING → BETTING_OPEN → BETTING_CLOSED → IN_PROGRESS → SETTLED</li>
+          <li>90s pre-kickoff: publish match card via WebSocket (vf:league-a / vf:league-b rooms)</li>
+          <li>75s betting window: accept bets via REST, reject after close</li>
+          <li>RNG seed committed before generation; revealed after settlement</li>
+          <li>Settlement: evaluate all 6 markets (1X2, O/U 2.5, BTTS, Double Chance, Correct Score, HT Result), credit wallets</li>
+          <li>Team form drift: winner +0.05, loser -0.05, clamped 0.1–1.0</li>
+          <li>League standings update after each match</li>
+          <li>Scheduler startup recovery: resume or void stuck rounds</li>
+          <li>WebSocket events: upcoming, betting_open, halfTime, result, standings_update</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (web)</h4>
+        <ul class="checklist">
+          <li>Virtual Football screen with Socket.IO subscription</li>
+          <li>League A / League B tab switch</li>
+          <li>Upcoming match card: teams, countdown timer, all 6 markets with odds</li>
+          <li>Active match ticker: "56' GOAL — FC Lagos" (pushed events)</li>
+          <li>Half-time score reveal</li>
+          <li>Full-time result panel</li>
+          <li>League standings table (collapsible, real-time updates)</li>
+          <li>Results feed: last 20 completed matches</li>
+          <li>Shared bet slip — no new UI needed, same component as sports</li>
+          <li>Home screen: VF promo card with next match countdown</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Two virtual football leagues running every 4 minutes continuously with live updates pushed to the browser.</div>
+    <div class="phase-note">Note: This is the highest-risk phase. Budget 4 weeks if team encounters scheduler + WebSocket integration challenges.</div>
+  </div>
+
+  <!-- PHASE 4 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 4</div>
+      <h3>Virtual Horse Racing</h3>
+      <div class="phase-meta"><span>2 Weeks</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend + Game Engine</h4>
+        <ul class="checklist">
+          <li>packages/game-engine: weighted random shuffle for finishing order (Fisher-Yates with weights)</li>
+          <li>Seed 48 named horses with jockey and base_rating into DB</li>
+          <li>Win odds calculation: (horse_rating / sum_of_all_ratings) × house_margin</li>
+          <li>HorseRacingScheduler: BullMQ repeating job, 3-min cycle</li>
+          <li>Draw 8 horses per race (weighted by current_rating for realistic selection)</li>
+          <li>30-second "in progress" suspense delay before result reveal</li>
+          <li>Horse rating drift: winner +1, others -0.2, clamped to min/max</li>
+          <li>Form array: append finish position, sliding window of 5</li>
+          <li>Daily race number: Redis counter, reset at midnight WAT</li>
+          <li>Settlement: Win market only for MVP</li>
+          <li>WebSocket events: race_card, betting_open, in_progress, result</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (web)</h4>
+        <ul class="checklist">
+          <li>Horse Racing screen with Socket.IO subscription</li>
+          <li>Race card: 8 horses with name, jockey, form guide (last 5), win odds</li>
+          <li>Countdown timer (large, prominent)</li>
+          <li>"Race in progress" holding state (30s)</li>
+          <li>Result panel: 1st / 2nd / 3rd with horse names and odds</li>
+          <li>Last 10 races history strip</li>
+          <li>Shared bet slip reused</li>
+          <li>Home screen: Horse Racing promo card with next race countdown</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Horse races running every 3 minutes with results posted and bets settled automatically.</div>
+  </div>
+
+  <!-- PHASE 5 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 5</div>
+      <h3>Full Admin Back Office</h3>
+      <div class="phase-meta"><span>1 Week</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Backend</h4>
+        <ul class="checklist">
+          <li>AdminAuthModule: separate JWT, IP whitelist guard</li>
+          <li>Cloudflare firewall rule: block admin subdomain by IP</li>
+          <li>Users API: search by phone/username, ban/unban, view wallet + bet history</li>
+          <li>Full withdrawal API: Paystack Transfer Recipient creation + Transfer initiation</li>
+          <li>Sport Bets API: list/filter + manual void</li>
+          <li>Virtual Bets + Rounds API: full audit log with seed verification</li>
+          <li>Financials API: daily aggregates — deposits, withdrawals, GGR</li>
+          <li>Game Config API: CRUD on game_config table</li>
+          <li>Risk alerts: BullMQ job checking daily win totals, flag above threshold</li>
+          <li>Unusual deposit pattern detection (10+ in short window)</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Frontend (admin)</h4>
+        <ul class="checklist">
+          <li>Admin login (separate app, separate domain)</li>
+          <li>Users table: search, status badge, click-through to user detail</li>
+          <li>Withdrawal queue: pending list, approve/reject with notes</li>
+          <li>Sport bets table: status filter, manual void action</li>
+          <li>Virtual bets table across all three games</li>
+          <li>Virtual rounds audit log with RNG seed display</li>
+          <li>Financials dashboard: daily chart, GGR summary</li>
+          <li>Game Config form: edit stakes, house edge, suspend game/market toggle</li>
+          <li>Risk flags panel: high-win users, unusual deposits</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Operator has full platform visibility and can manage all users, bets, withdrawals, and game configuration.</div>
+  </div>
+
+  <!-- PHASE 6 -->
+  <div class="phase-card no-break">
+    <div class="phase-card-header">
+      <div class="phase-badge">PHASE 6</div>
+      <h3>QA, Security & Soft Launch</h3>
+      <div class="phase-meta"><span>2 Weeks</span></div>
+    </div>
+    <div class="phase-card-body">
+      <div class="phase-col">
+        <h4>Security & Correctness</h4>
+        <ul class="checklist">
+          <li>OWASP Top 10 review: SQL injection, XSS, CSRF, broken auth</li>
+          <li>Paystack webhook HMAC verification confirmed on all paths</li>
+          <li>JWT secret rotation test</li>
+          <li>Admin IP whitelist: tested at Cloudflare + NestJS guard levels</li>
+          <li>Wallet audit: confirm no balance change outside DB transaction</li>
+          <li>RNG seed audit: verify committed hash matches revealed seed for last 100 rounds</li>
+          <li>Rate limiting: test auth endpoints under burst requests</li>
+          <li>Payout cap: confirm max accumulator limit enforced</li>
+        </ul>
+      </div>
+      <div class="phase-col">
+        <h4>Performance & Mobile QA</h4>
+        <ul class="checklist">
+          <li>Load test: 50 concurrent users placing bets during 75s betting window</li>
+          <li>WebSocket: 200+ concurrent connections, no memory leak</li>
+          <li>Settlement time: confirm &lt;10s for 50 simultaneous bets</li>
+          <li>Chrome Android QA: 375px viewport, simulated 4G throttling</li>
+          <li>Lighthouse mobile score: target 85+ performance</li>
+          <li>Bet slip: verify works on small screens without layout shift</li>
+          <li>Countdown timers: stay in sync after tab background/foreground</li>
+          <li>Soft launch: invite 50–100 users, monitor Sentry + PostHog</li>
+        </ul>
+      </div>
+    </div>
+    <div class="phase-done">Platform live with real users. Sentry showing zero unhandled errors. All virtual game cycles running without manual intervention.</div>
+  </div>
+</div>
+
+<!-- ===================== SECTION 08 ===================== -->
+<div class="page page-break">
+  <div class="section-header">08 &nbsp; Risks & Engineering Mitigations</div>
+
+  <table>
+    <thead>
+      <tr><th>Risk</th><th>Likelihood</th><th>Impact</th><th>Engineering Mitigation</th></tr>
+    </thead>
+    <tbody>
+      <tr class="risk-critical">
+        <td>Race condition: two concurrent bets deplete wallet below zero</td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td><span class="badge badge-critical">Critical</span></td>
+        <td>SELECT FOR UPDATE on wallet row inside every debit transaction. CHECK constraint (balance_kobo >= 0) as DB-level safety net.</td>
+      </tr>
+      <tr class="risk-critical">
+        <td>Double deposit from Paystack webhook firing twice</td>
+        <td><span class="badge badge-high">High</span></td>
+        <td><span class="badge badge-critical">Critical</span></td>
+        <td>Unique constraint on transactions.ref. First webhook inserts; second webhook hits unique violation and returns 200 silently.</td>
+      </tr>
+      <tr class="risk-critical">
+        <td>Paystack declines gambling merchant account</td>
+        <td><span class="badge badge-high">High</span></td>
+        <td><span class="badge badge-critical">Critical</span></td>
+        <td>Register as "entertainment/fintech." Flutterwave account provisioned as drop-in fallback. Architecture uses a payment provider abstraction layer so switching requires minimal code changes.</td>
+      </tr>
+      <tr class="risk-high">
+        <td>Virtual game scheduler crashes mid-cycle — user funds in limbo</td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td><span class="badge badge-high">High</span></td>
+        <td>On API startup, query for rounds in non-terminal state. Rounds in BETTING_OPEN → void + refund. Rounds in IN_PROGRESS → continue to settlement. BullMQ job history enables replay.</td>
+      </tr>
+      <tr class="risk-high">
+        <td>Wallet balance discrepancy due to application bug</td>
+        <td><span class="badge badge-low">Low</span></td>
+        <td><span class="badge badge-critical">Critical</span></td>
+        <td>Hourly BullMQ cron compares sum(transactions) vs wallet.balance_kobo for all wallets. Any mismatch fires a Sentry alert immediately.</td>
+      </tr>
+      <tr class="risk-high">
+        <td>RNG disputed by users (fairness claims)</td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td><span class="badge badge-high">High</span></td>
+        <td>Provably fair: SHA256(server_seed + round_id) committed to DB before round starts. Seed revealed after settlement. Users can independently verify any historical round.</td>
+      </tr>
+      <tr class="risk-medium">
+        <td>TheOddsAPI outage during live fixtures</td>
+        <td><span class="badge badge-low">Low</span></td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td>Cache odds with 5-min TTL; serve stale cache up to 2h before kickoff. If cache is older than 2h at kickoff, suspend new bet placement and alert operator. Settlement still runs from scores feed.</td>
+      </tr>
+      <tr class="risk-medium">
+        <td>Float rounding errors on payout calculations</td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td><span class="badge badge-high">High</span></td>
+        <td>All amounts stored and calculated in kobo (integers). All multiplications done in integer arithmetic. Payouts always floor-rounded — never round up in user's favour on the platform side.</td>
+      </tr>
+      <tr class="risk-medium">
+        <td>User fraud — chargeback abuse</td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td><span class="badge badge-medium">Medium</span></td>
+        <td>Withdrawal delay (same-day / next-day). Minimum KYC (bank account verification) on first withdrawal. Unusual deposit pattern flagging (10+ in short window). Withdrawal amount capped without KYC.</td>
+      </tr>
+      <tr>
+        <td>Regulatory action from LSLGA or state bodies</td>
+        <td><span class="badge badge-low">Low (at scale)</span></td>
+        <td><span class="badge badge-high">High</span></td>
+        <td>Soft launch without mass advertising. Begin URC state license application once platform is profitable. Avoid SEO-aggressive content targeting gambling keywords initially.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===================== SECTION 09 ===================== -->
+<div class="page page-break">
+  <div class="section-header">09 &nbsp; Development Workflow & Standards</div>
+
+  <h2>9.1 Branching Strategy</h2>
+  <table>
+    <thead><tr><th>Branch</th><th>Purpose</th><th>Rules</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">main</span></td><td>Production</td><td>Merge via PR only. CI must pass. Deploys automatically to Railway + Vercel production.</td></tr>
+      <tr><td><span class="mono">develop</span></td><td>Integration</td><td>All feature branches merge here first. Deploys to staging environment.</td></tr>
+      <tr><td><span class="mono">feature/*</span></td><td>Feature development</td><td>Branch from develop. Merge back to develop via PR.</td></tr>
+      <tr><td><span class="mono">fix/*</span></td><td>Bug fixes</td><td>Branch from develop (or main for hotfixes).</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9.2 Environment Variables Strategy</h2>
+  <table>
+    <thead><tr><th>Variable Location</th><th>Contents</th><th>Committed to Git?</th></tr></thead>
+    <tbody>
+      <tr><td><span class="mono">apps/api/.env</span></td><td>DATABASE_URL, REDIS_URL, JWT secrets, Paystack secret key, Termii key, TheOddsAPI key</td><td>No — .gitignored</td></tr>
+      <tr><td><span class="mono">apps/web/.env.local</span></td><td>NEXT_PUBLIC_API_URL, NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY, NEXT_PUBLIC_POSTHOG_KEY</td><td>No — .gitignored</td></tr>
+      <tr><td><span class="mono">apps/admin/.env.local</span></td><td>NEXT_PUBLIC_API_URL only</td><td>No — .gitignored</td></tr>
+      <tr><td>Railway dashboard secrets</td><td>Production values for all API env vars</td><td>Never in Git</td></tr>
+      <tr><td>Vercel project env vars</td><td>Production values for web + admin Next.js vars</td><td>Never in Git</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9.3 NestJS Module Structure</h2>
+  <pre>
+<span class="dir">apps/api/src/</span>
+├── <span class="dir">auth/</span>            <span class="comment"># Registration, OTP, JWT, refresh tokens</span>
+├── <span class="dir">wallet/</span>          <span class="comment"># Balance, debit, credit, transaction ledger</span>
+├── <span class="dir">payments/</span>        <span class="comment"># Paystack integration, webhook handler, withdrawals</span>
+├── <span class="dir">sports/</span>          <span class="comment"># TheOddsAPI, fixtures, bet placement, settlement</span>
+├── <span class="dir">virtual/</span>
+│   ├── <span class="dir">dice/</span>          <span class="comment"># Roll endpoint, auto-bet, provably fair</span>
+│   ├── <span class="dir">football/</span>      <span class="comment"># Scheduler, RNG, WebSocket events, settlement</span>
+│   └── <span class="dir">horse-racing/</span>  <span class="comment"># Scheduler, race engine, WebSocket events</span>
+├── <span class="dir">admin/</span>           <span class="comment"># All admin endpoints, IP guard, risk alerts</span>
+├── <span class="dir">gateway/</span>         <span class="comment"># Socket.IO gateway — rooms, events, auth</span>
+├── <span class="dir">scheduler/</span>       <span class="comment"># BullMQ queue definitions, reconciliation cron</span>
+└── <span class="dir">config/</span>          <span class="comment"># Game config service (reads game_config table)</span></pre>
+
+  <h2>9.4 Testing Standards</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>What to Test</th><th>Framework</th></tr></thead>
+    <tbody>
+      <tr><td>packages/game-engine</td><td>Payout formula, RNG distribution, Poisson scorer, weighted shuffle — 100% unit test coverage required</td><td>Vitest</td></tr>
+      <tr><td>apps/api (services)</td><td>Wallet mutation logic, bet settlement evaluation, OTP flow</td><td>Jest</td></tr>
+      <tr><td>apps/api (e2e)</td><td>Full HTTP flows: register → deposit → place bet → settle</td><td>Jest + Supertest</td></tr>
+      <tr><td>apps/web</td><td>Bet slip calculations, form validation</td><td>Vitest + Testing Library</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9.5 Key Engineering Conventions</h2>
+  <ul>
+    <li><strong>Money is always kobo.</strong> Any function that accepts or returns money must have kobo in its parameter/return type name. No ambiguity.</li>
+    <li><strong>All DB writes through Prisma transactions.</strong> No raw SQL for mutations. No Prisma outside apps/api.</li>
+    <li><strong>Virtual game engine has no NestJS imports.</strong> It stays a pure TypeScript library. This enables testing without spinning up the full app.</li>
+    <li><strong>WebSocket auth.</strong> Clients authenticate the Socket.IO connection by sending their JWT in the handshake headers. The gateway validates the token on connection.</li>
+    <li><strong>No floating-point arithmetic on money.</strong> All payout calculations: <span class="mono">Math.floor(stake_kobo * odds_decimal)</span> where odds is also a rational number.</li>
+    <li><strong>Paystack webhook validation is non-negotiable.</strong> Every webhook endpoint must validate the X-Paystack-Signature header before processing. No exceptions.</li>
+  </ul>
+</div>
+
+<!-- ===================== SECTION 10 ===================== -->
+<div class="page page-break">
+  <div class="section-header">10 &nbsp; Pre-Launch Checklist</div>
+
+  <h2>Security</h2>
+  <ul class="checklist">
+    <li>OWASP Top 10 review completed — SQL injection, XSS, CSRF, broken auth</li>
+    <li>Paystack webhook HMAC-SHA512 signature verification confirmed on all paths</li>
+    <li>Admin subdomain blocked to non-whitelisted IPs at Cloudflare firewall rule level</li>
+    <li>Admin IP whitelist also enforced in NestJS IpWhitelistGuard (defense in depth)</li>
+    <li>JWT secrets are minimum 64 random characters — not a word or phrase</li>
+    <li>All API endpoints require authentication (no anonymous bet placement)</li>
+    <li>Rate limiting confirmed on: /auth/register, /auth/login, /auth/otp/send, /dice/roll</li>
+    <li>No sensitive data (seeds, secrets) in application logs</li>
+    <li>CSP headers configured in Next.js for web app</li>
+    <li>HTTPS enforced — Cloudflare Full (Strict) SSL mode</li>
+  </ul>
+
+  <h2>Financial Integrity</h2>
+  <ul class="checklist">
+    <li>Wallet audit: run reconciliation on all wallets — zero discrepancies</li>
+    <li>RNG seed audit: verify committed hash matches revealed seed for last 100 rounds of each game</li>
+    <li>Payout cap: confirm max accumulator limit is enforced in test bet scenario</li>
+    <li>Dice payout formula: spot-check 10 thresholds against expected multipliers</li>
+    <li>Kobo: confirm no float values in transactions table</li>
+    <li>Idempotency: simulate duplicate Paystack webhook — confirm single credit</li>
+  </ul>
+
+  <h2>Accounts & API Keys</h2>
+  <ul class="checklist">
+    <li>Paystack production keys configured in Railway (not test keys)</li>
+    <li>Termii production key — test delivery to 5 real Nigerian numbers</li>
+    <li>TheOddsAPI key — confirm NPFL is accessible on the subscription plan</li>
+    <li>Flutterwave account ready (standby)</li>
+    <li>Sentry DSNs for web, admin, and api in production env vars</li>
+    <li>PostHog project key in production web env vars</li>
+  </ul>
+
+  <h2>Virtual Games Verification</h2>
+  <ul class="checklist">
+    <li>Virtual Football League A: run 10 complete cycles manually, confirm all bets settle</li>
+    <li>Virtual Football League B: same</li>
+    <li>Horse Racing: run 10 complete cycles, confirm win settlement correct</li>
+    <li>Scheduler restart test: kill API process mid-cycle, restart, confirm stuck rounds resolve</li>
+    <li>WebSocket: confirm clients receive events for all cycle stages</li>
+    <li>Countdown timers: confirm clock stays accurate after tab goes background for 60 seconds</li>
+  </ul>
+
+  <h2>Mobile & Performance</h2>
+  <ul class="checklist">
+    <li>Lighthouse mobile score: 85+ on home screen and virtual football screen</li>
+    <li>Page load under 2.5s on simulated 4G (Chrome DevTools throttle)</li>
+    <li>375px viewport: all screens tested, no horizontal scroll, no layout overflow</li>
+    <li>Bet slip: opens and operates correctly on small screens</li>
+    <li>Load test: 50 concurrent bet placements during betting window — all succeed</li>
+  </ul>
+</div>
+
+<!-- ===================== SECTION 11 ===================== -->
+<div class="page page-break">
+  <div class="section-header">11 &nbsp; Post-MVP Roadmap</div>
+
+  <table>
+    <thead><tr><th>Feature</th><th>Target</th><th>Engineering Notes</th></tr></thead>
+    <tbody>
+      <tr><td>URC / state licensing pursuit</td><td>Q3 2026</td><td>Legal process, not engineering. Architecture already handles audit trail requirements.</td></tr>
+      <tr><td>Horse Racing — Each Way, Forecast, Reverse Forecast markets</td><td>Q3 2026</td><td>Add market types to game engine. Forecast requires storing top-2 picks and exact order matching.</td></tr>
+      <tr><td>Referral and affiliate system</td><td>Q3 2026</td><td>New module. Track referral codes, first-deposit attribution, commission calculation on each bet.</td></tr>
+      <tr><td>Crash game</td><td>Q3 2026</td><td>Shared multiplier curve for all players in a round. WebSocket-driven. Provably fair using same seed commit/reveal pattern.</td></tr>
+      <tr><td>Live in-play football betting</td><td>Q4 2026</td><td>Requires TheOddsAPI in-play plan or switch to a dedicated in-play provider. Significantly higher odds update frequency.</td></tr>
+      <tr><td>KYC integration (Smile Identity / YouVerify)</td><td>Q4 2026</td><td>Identity verification module. Unlocks higher withdrawal limits. Required for regulatory compliance.</td></tr>
+      <tr><td>Android PWA installable app</td><td>Q4 2026</td><td>Add manifest.json, service worker, install prompt to existing Next.js web app. Minimal engineering effort if PWA basics are in from the start.</td></tr>
+      <tr><td>Mines virtual game</td><td>Q1 2027</td><td>Grid-based RNG game. Cashout mechanic. Provably fair. Game engine extension.</td></tr>
+      <tr><td>Welcome bonus and promotions engine</td><td>Q1 2027</td><td>Bonus wallet (separate from real balance), wagering requirements tracker, expiry. New module complexity.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-info">
+    <strong>PWA Preparation (Start in Phase 0)</strong>
+    Add manifest.json and the meta viewport/theme-color tags to apps/web from day one. This costs nothing and means the Q4 2026 "Android PWA installable app" feature is largely a service worker addition rather than a retrofit.
+  </div>
+
+  <div class="footer">
+    <div><strong>Qiro Sport</strong> — Engineering Execution Roadmap v1.0</div>
+    <div>Confidential — June 2026</div>
+    <div>13–14 Week MVP Build</div>
+  </div>
+</div>
+
+</body>
+</html>
