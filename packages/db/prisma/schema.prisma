@@ -1,0 +1,292 @@
+// Qiro Sport — Prisma Schema
+// All monetary values stored in KOBO (integer). Never use NGN floats.
+// The transactions table is APPEND-ONLY — no UPDATE, no DELETE.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAW
+  STAKE
+  WIN
+  REFUND
+  ADJUSTMENT
+}
+
+enum BetStatus {
+  PENDING
+  WON
+  LOST
+  VOID
+}
+
+enum GameType {
+  DICE
+  VIRTUAL_FOOTBALL
+  HORSE_RACING
+}
+
+enum VirtualLeague {
+  A
+  B
+}
+
+enum RoundStatus {
+  UPCOMING
+  BETTING_OPEN
+  BETTING_CLOSED
+  IN_PROGRESS
+  SETTLED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+// ─── Users & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id                  String      @id @default(uuid())
+  phone               String      @unique
+  username            String      @unique
+  passwordHash        String
+  dob                 DateTime    @db.Date
+  phoneVerified       Boolean     @default(false)
+  status              UserStatus  @default(ACTIVE)
+  failedLoginAttempts Int         @default(0)
+  lockedUntil         DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  wallet              Wallet?
+  sportBets           SportBet[]
+  virtualBets         VirtualBet[]
+  withdrawalRequests  WithdrawalRequest[]
+
+  @@map("users")
+}
+
+// ─── Wallet & Ledger ──────────────────────────────────────────────────────────
+
+model Wallet {
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  balanceKobo  BigInt        @default(0)
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id])
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+// APPEND-ONLY. Application layer must never UPDATE or DELETE rows.
+model Transaction {
+  id                  String          @id @default(uuid())
+  walletId            String
+  type                TransactionType
+  amountKobo          BigInt
+  runningBalanceKobo  BigInt
+  ref                 String          @unique
+  metadata            Json?
+  createdAt           DateTime        @default(now())
+
+  wallet              Wallet          @relation(fields: [walletId], references: [id])
+
+  @@index([walletId, createdAt])
+  @@map("transactions")
+}
+
+// ─── Sports Betting ───────────────────────────────────────────────────────────
+
+model SportBet {
+  id                String      @id @default(uuid())
+  userId            String
+  stakeKobo         BigInt
+  totalOdds         Decimal     @db.Decimal(10, 4)
+  potentialWinKobo  BigInt
+  actualWinKobo     BigInt?
+  status            BetStatus   @default(PENDING)
+  settledAt         DateTime?
+  createdAt         DateTime    @default(now())
+
+  user              User        @relation(fields: [userId], references: [id])
+  selections        SportSelection[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("sport_bets")
+}
+
+model SportSelection {
+  id          String    @id @default(uuid())
+  betId       String
+  fixtureId   String
+  market      String
+  pick        String
+  oddsDecimal Decimal   @db.Decimal(8, 4)
+  result      BetStatus @default(PENDING)
+
+  bet         SportBet  @relation(fields: [betId], references: [id])
+
+  @@map("sport_selections")
+}
+
+// ─── Virtual Bets (all games) ─────────────────────────────────────────────────
+
+model VirtualBet {
+  id          String    @id @default(uuid())
+  userId      String
+  gameType    GameType
+  roundId     String
+  market      String
+  pick        String
+  oddsDecimal Decimal   @db.Decimal(8, 4)
+  stakeKobo   BigInt
+  payoutKobo  BigInt?
+  status      BetStatus @default(PENDING)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([roundId, gameType])
+  @@index([status])
+  @@map("virtual_bets")
+}
+
+// ─── Virtual Football ─────────────────────────────────────────────────────────
+
+model VirtualTeam {
+  id          Int           @id @default(autoincrement())
+  name        String        @unique
+  attack      Decimal       @db.Decimal(4, 2)
+  defense     Decimal       @db.Decimal(4, 2)
+  formWeight  Decimal       @default(0.500) @db.Decimal(4, 3)
+  league      VirtualLeague
+
+  homeRounds  VirtualFootballRound[] @relation("HomeTeam")
+  awayRounds  VirtualFootballRound[] @relation("AwayTeam")
+
+  @@map("virtual_teams")
+}
+
+model VirtualFootballRound {
+  id           String        @id @default(uuid())
+  league       VirtualLeague
+  homeTeamId   Int
+  awayTeamId   Int
+  homeScore    Int?
+  awayScore    Int?
+  halfTimeHome Int?
+  halfTimeAway Int?
+  events       Json?         // [{minute, type, teamId}]
+  rngSeedHash  String        // SHA256(seed:roundId) committed before round
+  rngSeed      String?       // Revealed after settlement
+  status       RoundStatus   @default(UPCOMING)
+  cycleAt      DateTime
+  createdAt    DateTime      @default(now())
+
+  homeTeam     VirtualTeam   @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam     VirtualTeam   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+
+  @@index([league, status])
+  @@index([cycleAt])
+  @@map("virtual_football_rounds")
+}
+
+// ─── Virtual Horse Racing ─────────────────────────────────────────────────────
+
+model VirtualHorse {
+  id            Int     @id @default(autoincrement())
+  name          String  @unique
+  jockey        String
+  baseRating    Decimal @db.Decimal(5, 2)
+  currentRating Decimal @db.Decimal(5, 2)
+  form          Int[]   // Last 5 finishing positions
+
+  @@map("virtual_horses")
+}
+
+model HorseRaceRound {
+  id             String      @id @default(uuid())
+  raceNumber     Int
+  horseIds       Int[]       // 8 drawn horse IDs
+  finishingOrder Int[]       // Horse IDs in finish order
+  rngSeedHash    String
+  rngSeed        String?
+  status         RoundStatus @default(UPCOMING)
+  cycleAt        DateTime
+  createdAt      DateTime    @default(now())
+
+  @@index([status])
+  @@index([cycleAt])
+  @@map("horse_race_rounds")
+}
+
+// ─── Withdrawals ──────────────────────────────────────────────────────────────
+
+model WithdrawalRequest {
+  id                    String           @id @default(uuid())
+  userId                String
+  amountKobo            BigInt
+  bankCode              String
+  accountNumber         String
+  accountName           String?
+  transferRecipientCode String?          // Paystack recipient code
+  status                WithdrawalStatus @default(PENDING)
+  reviewedById          String?
+  notes                 String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  user                  User             @relation(fields: [userId], references: [id])
+  reviewedBy            AdminUser?       @relation(fields: [reviewedById], references: [id])
+
+  @@index([status, createdAt])
+  @@map("withdrawal_requests")
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+model AdminUser {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  ipWhitelist  String[] // Allowed IP addresses
+  createdAt    DateTime @default(now())
+
+  withdrawalReviews WithdrawalRequest[]
+
+  @@map("admin_users")
+}
+
+model GameConfig {
+  id        Int      @id @default(autoincrement())
+  gameType  String   // DICE, VIRTUAL_FOOTBALL, HORSE_RACING, SPORTS, GLOBAL
+  key       String   // min_stake_kobo, max_stake_kobo, house_edge, suspended
+  value     String   // Always stored as string, parsed by consumer
+  updatedAt DateTime @updatedAt
+
+  @@unique([gameType, key])
+  @@map("game_config")
+}
