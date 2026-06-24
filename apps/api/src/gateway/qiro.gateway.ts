@@ -34,15 +34,14 @@ export class QiroGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   handleConnection(client: Socket) {
     this.logger.debug(`Client connected: ${client.id}`)
 
-    // Client joins rooms on connection via query params
     const league = client.handshake.query['league'] as string | undefined
-    if (league === 'a') client.join('vf:league-a')
-    if (league === 'b') client.join('vf:league-b')
+    if (league === 'a')   client.join('vf:league-a')
+    if (league === 'b')   client.join('vf:league-b')
+    if (league === 'all') { client.join('vf:league-a'); client.join('vf:league-b') }
 
     const game = client.handshake.query['game'] as string | undefined
     if (game === 'horse-racing') client.join('horse-racing')
 
-    // User private channel (auth token validated by guard in Phase 0)
     const userId = client.handshake.query['userId'] as string | undefined
     if (userId) client.join(`user:${userId}`)
   }

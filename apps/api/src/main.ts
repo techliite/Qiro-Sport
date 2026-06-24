@@ -1,11 +1,13 @@
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
+import cookieParser from 'cookie-parser'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule)
+  const app = await NestFactory.create(AppModule, { rawBody: true })
 
+  app.use(cookieParser())
   app.setGlobalPrefix('api/v1')
 
   app.useGlobalPipes(

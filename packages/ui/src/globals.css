@@ -2,17 +2,21 @@
 
 @theme {
   /* ── Qiro Sport Design Tokens ── */
-  --color-primary: #4B6BF1;
-  --color-accent: #7C3AED;
-  --color-background: #0F172A;
-  --color-surface: #1E293B;
-  --color-surface-elevated: #263548;
-  --color-success: #059669;
-  --color-danger: #DC2626;
-  --color-warning: #D97706;
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-border: #334155;
+  --color-background: #070B1A;
+  --color-bg-secondary: #081226;
+  --color-surface: #0F1B3D;
+  --color-surface-elevated: #162040;
+  --color-sidebar: #1E293B;
+  --color-primary: #0066FF;
+  --color-primary-hover: #0052CC;
+  --color-accent: #00D4FF;
+  --color-glow: #00F0FF;
+  --color-success: #00C48C;
+  --color-danger: #EF4444;
+  --color-warning: #F59E0B;
+  --color-text-primary: #E6F1FF;
+  --color-text-secondary: #4D6B9A;
+  --color-border: #1A2B4A;
 
   /* ── Typography ── */
   --font-sans: "Inter", system-ui, sans-serif;
@@ -34,6 +38,8 @@
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    background-image: radial-gradient(ellipse at 50% 0%, #0F1B3D 0%, #070B1A 60%);
+    background-attachment: fixed;
   }
 
   /* Numbers, odds, balances always use mono font */
@@ -49,8 +55,17 @@
   .text-danger  { color: var(--color-danger); }
   .text-warning { color: var(--color-warning); }
 
-  .bg-surface   { background-color: var(--color-surface); }
+  .bg-surface          { background-color: var(--color-surface); }
   .bg-surface-elevated { background-color: var(--color-surface-elevated); }
+  .bg-sidebar          { background-color: var(--color-sidebar); }
+
+  /* Electric blue glow utility — used on active states and CTAs */
+  .glow-primary {
+    box-shadow: 0 0 16px rgba(0, 102, 255, 0.4);
+  }
+  .glow-accent {
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.35);
+  }
 
   /* Safe area for mobile bottom navigation */
   .pb-safe {

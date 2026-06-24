@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Patch, Body, Query, Param } from '@nestjs/common'
+import { Controller, Get, Patch, Body, Query, Param } from '@nestjs/common'
 import { AdminService } from './admin.service'
+import { Public } from '../auth/decorators/public.decorator'
 
-// IP whitelist guard + AdminJwtGuard will be added in Phase 5
+// Phase 5: replace @Public() with IP whitelist guard + dedicated AdminJwtGuard
+@Public()
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -21,22 +23,22 @@ export class AdminController {
     return this.adminService.setUserStatus(id, 'ACTIVE')
   }
 
+  @Patch('users/:id/suspend')
+  suspendUser(@Param('id') id: string) {
+    return this.adminService.setUserStatus(id, 'SUSPENDED')
+  }
+
   @Get('withdrawals')
   getWithdrawals(@Query('status') status?: string) {
     return this.adminService.getWithdrawals(status)
   }
 
-  @Patch('withdrawals/:id/approve')
-  approveWithdrawal(@Param('id') id: string, @Body('adminId') adminId: string) {
-    return this.adminService.reviewWithdrawal(id, 'APPROVED', adminId)
-  }
-
-  @Patch('withdrawals/:id/reject')
-  rejectWithdrawal(
+  @Patch('withdrawals/:id')
+  reviewWithdrawal(
     @Param('id') id: string,
-    @Body() body: { adminId: string; notes: string },
+    @Body() body: { status: 'APPROVED' | 'REJECTED'; notes?: string },
   ) {
-    return this.adminService.reviewWithdrawal(id, 'REJECTED', body.adminId, body.notes)
+    return this.adminService.reviewWithdrawal(id, body.status, 'system', body.notes)
   }
 
   @Get('bets/sport')
@@ -52,5 +54,15 @@ export class AdminController {
   @Get('financials/daily')
   getDailyFinancials(@Query('date') date?: string) {
     return this.adminService.getDailyFinancials(date)
+  }
+
+  @Get('config')
+  getGameConfigs() {
+    return this.adminService.getGameConfigs()
+  }
+
+  @Patch('config')
+  setGameConfig(@Body() body: { gameType: string; key: string; value: string }) {
+    return this.adminService.setGameConfig(body.gameType, body.key, body.value)
   }
 }

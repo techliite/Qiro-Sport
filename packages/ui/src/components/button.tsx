@@ -4,16 +4,16 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4B6BF1] disabled:pointer-events-none disabled:opacity-40 active:scale-95',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066FF] disabled:pointer-events-none disabled:opacity-40 active:scale-95',
   {
     variants: {
       variant: {
-        primary: 'bg-[#4B6BF1] text-white hover:bg-[#3a57d4]',
-        accent:  'bg-[#7C3AED] text-white hover:bg-[#6d31d4]',
-        outline: 'border border-[#334155] bg-transparent text-[#F1F5F9] hover:bg-[#1E293B]',
-        ghost:   'bg-transparent text-[#94A3B8] hover:bg-[#1E293B] hover:text-[#F1F5F9]',
-        danger:  'bg-[#DC2626] text-white hover:bg-[#b91c1c]',
-        success: 'bg-[#059669] text-white hover:bg-[#047857]',
+        primary: 'bg-[#0066FF] text-white hover:bg-[#0052CC] shadow-[0_0_16px_rgba(0,102,255,0.35)] hover:shadow-[0_0_24px_rgba(0,102,255,0.5)]',
+        accent:  'bg-[#00D4FF]/10 text-[#00D4FF] border border-[#00D4FF]/30 hover:bg-[#00D4FF]/20 hover:border-[#00D4FF]/60',
+        outline: 'border border-[#1A2B4A] bg-transparent text-[#E6F1FF] hover:bg-[#0F1B3D] hover:border-[#0066FF]/40',
+        ghost:   'bg-transparent text-[#4D6B9A] hover:bg-[#0F1B3D] hover:text-[#E6F1FF]',
+        danger:  'bg-[#EF4444] text-white hover:bg-[#DC2626]',
+        success: 'bg-[#00C48C] text-white hover:bg-[#00A876]',
       },
       size: {
         sm:   'h-8  px-3 text-xs',
