@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { Minus, Plus, Loader2, RotateCcw, TrendingUp, TrendingDown, Info } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useWalletStore } from '@/store/wallet.store'
+import { useToastStore } from '@/store/toast.store'
 import { cn } from '@qiro/ui'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ function HistoryRow({ entry }: { entry: HistoryEntry }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function DicePage() {
+  const pushToast  = useToastStore((s) => s.push)
   const [threshold, setThreshold] = useState(50)
   const [direction, setDirection] = useState<'OVER' | 'UNDER'>('OVER')
   const [stakeInput, setStakeInput] = useState('500')
@@ -182,6 +184,12 @@ export default function DicePage() {
       setWon(didWin)
       setLastPayout(payoutKobo)
       setShowSeed({ hash: seedHash, seed })
+
+      pushToast({
+        type: didWin ? 'win' : 'loss',
+        title: didWin ? `Rolled ${rolledNumber} — You won!` : `Rolled ${rolledNumber} — Lost`,
+        body: didWin ? `+${formatNaira(payoutKobo - stakeKobo)} profit` : undefined,
+      })
 
       setHistory((prev) => [
         { id: `${Date.now()}`, rolled: rolledNumber, threshold, direction, won: didWin, stakeKobo, payoutKobo },

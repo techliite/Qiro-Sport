@@ -89,4 +89,32 @@ export class DiceService {
 
     return { results, completedRolls: results.length }
   }
+
+  async getUserBets(userId: string, page = 1, limit = 20) {
+    const [bets, total] = await Promise.all([
+      prisma.virtualBet.findMany({
+        where: { userId, gameType: GameType.DICE },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.virtualBet.count({ where: { userId, gameType: GameType.DICE } }),
+    ])
+
+    return {
+      bets: bets.map((b) => ({
+        id: b.id,
+        gameType: b.gameType,
+        market: b.market,
+        pick: b.pick,
+        oddsDecimal: Number(b.oddsDecimal),
+        stakeKobo: Number(b.stakeKobo),
+        payoutKobo: b.payoutKobo ? Number(b.payoutKobo) : null,
+        status: b.status,
+        createdAt: b.createdAt.toISOString(),
+      })),
+      total,
+      page,
+    }
+  }
 }

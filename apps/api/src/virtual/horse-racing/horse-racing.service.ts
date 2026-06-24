@@ -306,6 +306,34 @@ export class HorseRacingService implements OnModuleInit {
     }
   }
 
+  async getUserBets(userId: string, page = 1, limit = 20) {
+    const [bets, total] = await Promise.all([
+      prisma.virtualBet.findMany({
+        where: { userId, gameType: GameType.HORSE_RACING },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.virtualBet.count({ where: { userId, gameType: GameType.HORSE_RACING } }),
+    ])
+
+    return {
+      bets: bets.map((b) => ({
+        id: b.id,
+        gameType: b.gameType,
+        market: b.market,
+        pick: b.pick,
+        oddsDecimal: Number(b.oddsDecimal),
+        stakeKobo: Number(b.stakeKobo),
+        payoutKobo: b.payoutKobo ? Number(b.payoutKobo) : null,
+        status: b.status,
+        createdAt: b.createdAt.toISOString(),
+      })),
+      total,
+      page,
+    }
+  }
+
   async getRecentResults(limit = 10) {
     const rounds = await prisma.horseRaceRound.findMany({
       where: { status: RoundStatus.SETTLED },

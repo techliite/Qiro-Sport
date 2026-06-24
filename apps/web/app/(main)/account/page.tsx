@@ -2,12 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, ArrowUpRight, ArrowDownLeft, RefreshCw, Trophy, Clock, XCircle, Plus, Minus, X, ChevronDown, AlertCircle, CheckCircle } from 'lucide-react'
-import { formatNaira } from '@qiro/ui'
+import { LogOut, ArrowUpRight, ArrowDownLeft, RefreshCw, Trophy, Clock, XCircle, Plus, Minus, X, ChevronDown, AlertCircle, CheckCircle, Loader2 } from 'lucide-react'
+import { formatNaira, cn } from '@qiro/ui'
 import { useAuthStore } from '@/store/auth.store'
 import { useWalletStore } from '@/store/wallet.store'
 import { api } from '@/lib/api'
-import { cn } from '@qiro/ui'
 
 interface Transaction {
   id: string
@@ -28,34 +27,6 @@ const MOCK_TXS: Transaction[] = [
   { id: '5', type: 'WITHDRAW', amountKobo: '200000',  runningBalanceKobo: '255000',  ref: 'WD_001',  createdAt: new Date(Date.now() - 900000).toISOString() },
 ]
 
-const NIGERIAN_BANKS = [
-  { code: '044', name: 'Access Bank' },
-  { code: '023', name: 'Citibank' },
-  { code: '063', name: 'Diamond Bank' },
-  { code: '050', name: 'EcoBank' },
-  { code: '011', name: 'First Bank' },
-  { code: '214', name: 'First City Monument Bank' },
-  { code: '058', name: 'GTBank' },
-  { code: '030', name: 'Heritage Bank' },
-  { code: '301', name: 'Jaiz Bank' },
-  { code: '082', name: 'Keystone Bank' },
-  { code: '526', name: 'Moniepoint MFB' },
-  { code: '070', name: 'Fidelity Bank' },
-  { code: '076', name: 'Polaris Bank' },
-  { code: '101', name: 'ProvidusBank' },
-  { code: '221', name: 'Stanbic IBTC' },
-  { code: '068', name: 'Standard Chartered' },
-  { code: '232', name: 'Sterling Bank' },
-  { code: '100', name: 'Suntrust Bank' },
-  { code: '032', name: 'Union Bank' },
-  { code: '033', name: 'UBA' },
-  { code: '215', name: 'Unity Bank' },
-  { code: '035', name: 'Wema Bank' },
-  { code: '057', name: 'Zenith Bank' },
-  { code: '999992', name: 'OPay' },
-  { code: '999991', name: 'PalmPay' },
-  { code: '999994', name: 'Kuda MFB' },
-]
 
 const TX_ICONS: Record<string, React.ReactNode> = {
   DEPOSIT:    <ArrowDownLeft size={14} className="text-[#00C48C]" />,
@@ -221,29 +192,50 @@ interface WithdrawModalProps {
   onSuccess: (newBalance: number) => void
 }
 
+interface Bank { name: string; code: string }
+
 function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) {
-  const [amount, setAmount]    = useState('')
-  const [bankCode, setBankCode] = useState('')
-  const [accountNo, setAccountNo] = useState('')
+  const [amount, setAmount]         = useState('')
+  const [bankCode, setBankCode]     = useState('')
+  const [accountNo, setAccountNo]   = useState('')
   const [accountName, setAccountName] = useState('')
-  const [status, setStatus]    = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [errMsg, setErrMsg]    = useState('')
+  const [banks, setBanks]           = useState<Bank[]>([])
+  const [verifying, setVerifying]   = useState(false)
+  const [status, setStatus]         = useState<'idle' | 'loading' | 'success'>('idle')
+  const [errMsg, setErrMsg]         = useState('')
 
   const amountKobo = Math.floor(Number(amount) * 100)
-  const valid = amountKobo >= 50000 && amountKobo <= balanceKobo && bankCode && accountNo.length >= 10 && accountName.length >= 2
+  const valid = amountKobo >= 50000 && amountKobo <= balanceKobo && !!accountName
+
+  // Fetch bank list once on open
+  useEffect(() => {
+    api.get<Bank[]>('/payments/banks')
+      .then((r) => setBanks(r.data))
+      .catch(() => null)
+  }, [])
+
+  // Auto-verify account when 10 digits + bank selected
+  useEffect(() => {
+    if (accountNo.length !== 10 || !bankCode) { setAccountName(''); return }
+    setVerifying(true)
+    setAccountName('')
+    api.post<{ accountName: string }>('/payments/verify-bank', { accountNumber: accountNo, bankCode })
+      .then((r) => setAccountName(r.data.accountName))
+      .catch(() => setErrMsg('Could not verify account — check details'))
+      .finally(() => setVerifying(false))
+  }, [accountNo, bankCode])
 
   const handleSubmit = async () => {
     if (!valid) return
     setStatus('loading'); setErrMsg('')
     try {
-      await api.post('/wallet/withdraw', { amountKobo, bankCode, accountNumber: accountNo, accountName })
+      await api.post('/payments/withdraw', { amountKobo, bankCode, accountNumber: accountNo })
       setStatus('success')
       onSuccess(balanceKobo - amountKobo)
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Withdrawal request failed'
-      setStatus('error'); setErrMsg(msg)
-    } finally {
-      if (status !== 'success') setStatus('idle')
+      setErrMsg(msg)
+      setStatus('idle')
     }
   }
 
@@ -281,7 +273,7 @@ function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) 
                     type="number"
                     inputMode="numeric"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => { setAmount(e.target.value); setErrMsg('') }}
                     placeholder="0"
                     className="w-full bg-[#081226] border border-[#1A2B4A] text-[#E6F1FF] font-bold rounded-xl pl-8 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#0066FF] transition-all"
                   />
@@ -295,11 +287,11 @@ function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) 
                 <div className="relative">
                   <select
                     value={bankCode}
-                    onChange={(e) => setBankCode(e.target.value)}
+                    onChange={(e) => { setBankCode(e.target.value); setErrMsg('') }}
                     className="w-full bg-[#081226] border border-[#1A2B4A] text-[#E6F1FF] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#0066FF] transition-all appearance-none"
                   >
                     <option value="">Select bank…</option>
-                    {NIGERIAN_BANKS.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}
+                    {banks.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4D6B9A] pointer-events-none" />
                 </div>
@@ -313,22 +305,20 @@ function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) 
                   inputMode="numeric"
                   maxLength={10}
                   value={accountNo}
-                  onChange={(e) => setAccountNo(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  onChange={(e) => { setAccountNo(e.target.value.replace(/\D/g, '').slice(0, 10)); setErrMsg('') }}
                   placeholder="0123456789"
                   className="w-full bg-[#081226] border border-[#1A2B4A] text-[#E6F1FF] font-mono rounded-xl px-3 py-2.5 text-sm tracking-widest focus:outline-none focus:border-[#0066FF] transition-all"
                 />
-              </div>
-
-              {/* Account name */}
-              <div>
-                <label className="text-xs font-semibold text-[#4D6B9A] mb-1.5 block">Account Name</label>
-                <input
-                  type="text"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  placeholder="e.g. John Doe"
-                  className="w-full bg-[#081226] border border-[#1A2B4A] text-[#E6F1FF] rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-[#0066FF] transition-all"
-                />
+                {verifying && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-[#4D6B9A] mt-1">
+                    <Loader2 size={10} className="animate-spin" /> Verifying account…
+                  </p>
+                )}
+                {accountName && !verifying && (
+                  <p className="flex items-center gap-1.5 text-[11px] text-[#00C48C] mt-1">
+                    <CheckCircle size={10} /> {accountName}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -340,7 +330,7 @@ function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) 
 
             <button
               onClick={handleSubmit}
-              disabled={!valid || status === 'loading'}
+              disabled={!valid || status === 'loading' || verifying}
               className="w-full h-12 bg-[#0066FF] hover:bg-[#0052CC] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all"
             >
               {status === 'loading' ? 'Submitting…' : `Withdraw ${amountKobo >= 50000 ? formatNaira(amountKobo) : ''}`}
@@ -352,19 +342,88 @@ function WithdrawModal({ balanceKobo, onClose, onSuccess }: WithdrawModalProps) 
   )
 }
 
+// ─── My Bets ─────────────────────────────────────────────────────────────────
+
+interface VirtualBet {
+  id: string
+  gameType: 'DICE' | 'VIRTUAL_FOOTBALL' | 'HORSE_RACING'
+  market: string
+  pick: string
+  oddsDecimal: number
+  stakeKobo: number
+  payoutKobo: number | null
+  status: 'PENDING' | 'WON' | 'LOST' | 'VOID'
+  createdAt: string
+}
+
+const GAME_LABELS: Record<string, string> = {
+  DICE: 'Dice',
+  VIRTUAL_FOOTBALL: 'Football',
+  HORSE_RACING: 'Horse Racing',
+}
+
+const MOCK_BETS: VirtualBet[] = [
+  { id: '1', gameType: 'VIRTUAL_FOOTBALL', market: '1x2', pick: '1', oddsDecimal: 1.85, stakeKobo: 50000, payoutKobo: 92500, status: 'WON', createdAt: new Date(Date.now() - 3600000).toISOString() },
+  { id: '2', gameType: 'DICE', market: 'dice', pick: 'OVER:50', oddsDecimal: 1.96, stakeKobo: 20000, payoutKobo: 0, status: 'LOST', createdAt: new Date(Date.now() - 7200000).toISOString() },
+  { id: '3', gameType: 'HORSE_RACING', market: 'win', pick: '3', oddsDecimal: 4.20, stakeKobo: 30000, payoutKobo: null, status: 'PENDING', createdAt: new Date(Date.now() - 1800000).toISOString() },
+]
+
+function BetRow({ bet }: { bet: VirtualBet }) {
+  const statusColor = bet.status === 'WON' ? 'text-[#00C48C]' : bet.status === 'LOST' ? 'text-[#EF4444]' : bet.status === 'PENDING' ? 'text-[#F59E0B]' : 'text-[#4D6B9A]'
+  const statusBg    = bet.status === 'WON' ? 'bg-[#00C48C]/10' : bet.status === 'LOST' ? 'bg-[#EF4444]/10' : bet.status === 'PENDING' ? 'bg-[#F59E0B]/10' : 'bg-[#1A2B4A]'
+
+  return (
+    <div className="flex items-center gap-3 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5">
+          <span className="text-xs font-bold text-[#E6F1FF]">{GAME_LABELS[bet.gameType]}</span>
+          <span className="text-[10px] text-[#4D6B9A]">{bet.market} · {bet.pick}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#4D6B9A]">Stake: {formatNaira(bet.stakeKobo)}</span>
+          <span className="text-[10px] text-[#4D6B9A]">@ {bet.oddsDecimal.toFixed(2)}</span>
+        </div>
+        <p className="text-[10px] text-[#4D6B9A] mt-0.5">{formatTime(bet.createdAt)}</p>
+      </div>
+      <div className="text-right shrink-0">
+        {bet.status === 'WON' && bet.payoutKobo ? (
+          <p className="text-sm font-bold text-[#00C48C] font-mono">+{formatNaira(bet.payoutKobo)}</p>
+        ) : bet.status === 'LOST' ? (
+          <p className="text-sm font-bold text-[#EF4444] font-mono">−{formatNaira(bet.stakeKobo)}</p>
+        ) : null}
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full mt-1 inline-block', statusColor, statusBg)}>
+          {bet.status}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Account Page ─────────────────────────────────────────────────────────────
 
+type Tab = 'transactions' | 'bets'
+
 export default function AccountPage() {
-  const router   = useRouter()
-  const user     = useAuthStore((s) => s.user)
+  const router    = useRouter()
+  const user      = useAuthStore((s) => s.user)
   const clearAuth = useAuthStore((s) => s.clearAuth)
-  const balance  = useWalletStore((s) => s.balanceKobo)
+  const balance   = useWalletStore((s) => s.balanceKobo)
   const setBalance = useWalletStore((s) => s.setBalance)
 
+  const [tab, setTab] = useState<Tab>('transactions')
+
+  // Transactions state
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [page, setPage]   = useState(1)
-  const [total, setTotal] = useState(0)
-  const [loading, setLoading]   = useState(true)
+  const [txPage, setTxPage] = useState(1)
+  const [txTotal, setTxTotal] = useState(0)
+  const [txLoading, setTxLoading] = useState(true)
+
+  // Bets state
+  const [bets, setBets] = useState<VirtualBet[]>([])
+  const [betPage, setBetPage] = useState(1)
+  const [betTotal, setBetTotal] = useState(0)
+  const [betLoading, setBetLoading] = useState(false)
+
   const [showDeposit, setShowDeposit]   = useState(false)
   const [showWithdraw, setShowWithdraw] = useState(false)
   const LIMIT = 20
@@ -378,28 +437,39 @@ export default function AccountPage() {
   useEffect(() => { loadBalance() }, [loadBalance])
 
   useEffect(() => {
-    setLoading(true)
-    api.get<{ transactions: Transaction[]; total: number }>(`/wallet/transactions?page=${page}&limit=${LIMIT}`)
+    setTxLoading(true)
+    api.get<{ transactions: Transaction[]; total: number }>(`/wallet/transactions?page=${txPage}&limit=${LIMIT}`)
       .then((r) => {
         setTransactions(r.data.transactions?.length ? r.data.transactions : MOCK_TXS)
-        setTotal(r.data.total || MOCK_TXS.length)
+        setTxTotal(r.data.total || MOCK_TXS.length)
       })
-      .catch(() => { setTransactions(MOCK_TXS); setTotal(MOCK_TXS.length) })
-      .finally(() => setLoading(false))
-  }, [page])
+      .catch(() => { setTransactions(MOCK_TXS); setTxTotal(MOCK_TXS.length) })
+      .finally(() => setTxLoading(false))
+  }, [txPage])
+
+  useEffect(() => {
+    if (tab !== 'bets') return
+    setBetLoading(true)
+    api.get<{ bets: VirtualBet[]; total: number }>(`/virtual/my-bets?page=${betPage}&limit=${LIMIT}`)
+      .then((r) => {
+        setBets(r.data.bets?.length ? r.data.bets : MOCK_BETS)
+        setBetTotal(r.data.total || MOCK_BETS.length)
+      })
+      .catch(() => { setBets(MOCK_BETS); setBetTotal(MOCK_BETS.length) })
+      .finally(() => setBetLoading(false))
+  }, [tab, betPage])
 
   const handleDepositSuccess = (newBalance: number) => {
     setBalance(newBalance)
-    // Reload transactions
     api.get<{ transactions: Transaction[]; total: number }>(`/wallet/transactions?page=1&limit=${LIMIT}`)
-      .then((r) => { setTransactions(r.data.transactions); setTotal(r.data.total); setPage(1) })
+      .then((r) => { setTransactions(r.data.transactions); setTxTotal(r.data.total); setTxPage(1) })
       .catch(() => null)
   }
 
   const handleWithdrawSuccess = (newBalance: number) => {
     setBalance(newBalance)
     api.get<{ transactions: Transaction[]; total: number }>(`/wallet/transactions?page=1&limit=${LIMIT}`)
-      .then((r) => { setTransactions(r.data.transactions); setTotal(r.data.total); setPage(1) })
+      .then((r) => { setTransactions(r.data.transactions); setTxTotal(r.data.total); setTxPage(1) })
       .catch(() => null)
   }
 
@@ -422,7 +492,6 @@ export default function AccountPage() {
         </p>
         <p className="text-xs text-[#4D6B9A] mb-5">@{user?.username ?? '—'} · {user?.phone ?? ''}</p>
 
-        {/* Action buttons */}
         <div className="flex gap-3">
           <button
             onClick={() => setShowDeposit(true)}
@@ -439,51 +508,101 @@ export default function AccountPage() {
         </div>
       </div>
 
-      {/* Transaction history */}
-      <div className="mt-5 px-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-[#E6F1FF]">Transaction History</h3>
-          <span className="text-xs text-[#4D6B9A]">{total} total</span>
-        </div>
+      {/* Tabs */}
+      <div className="mx-4 mt-5 flex gap-1 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl p-1">
+        {(['transactions', 'bets'] as Tab[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={cn(
+              'flex-1 h-8 rounded-lg text-xs font-bold transition-all',
+              tab === t ? 'bg-[#0066FF] text-white' : 'text-[#4D6B9A] hover:text-[#E6F1FF]',
+            )}
+          >
+            {t === 'transactions' ? 'Transactions' : 'My Bets'}
+          </button>
+        ))}
+      </div>
 
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 bg-[#0F1B3D] rounded-xl animate-pulse" />)}
-          </div>
-        ) : transactions.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12">
-            <Clock size={32} className="text-[#1A2B4A]" />
-            <p className="text-sm text-[#4D6B9A]">No transactions yet</p>
-            <button onClick={() => setShowDeposit(true)} className="mt-2 text-xs text-[#0066FF] font-semibold hover:text-[#00D4FF] transition-colors">Make your first deposit →</button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {transactions.map((tx) => (
-              <div key={tx.id} className="flex items-center gap-3 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3">
-                <div className="w-8 h-8 rounded-lg bg-[#081226] flex items-center justify-center shrink-0">
-                  {TX_ICONS[tx.type] ?? <XCircle size={14} className="text-[#4D6B9A]" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[#E6F1FF]">{TX_LABELS[tx.type] ?? tx.type}</p>
-                  <p className="text-[10px] text-[#4D6B9A] truncate">{formatTime(tx.createdAt)}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={cn('text-sm font-bold font-mono', isCredit(tx.type) ? 'text-[#00C48C]' : 'text-[#EF4444]')}>
-                    {isCredit(tx.type) ? '+' : '−'}{formatNaira(Number(tx.amountKobo))}
-                  </p>
-                  <p className="text-[10px] text-[#4D6B9A] font-mono">{formatNaira(Number(tx.runningBalanceKobo))}</p>
-                </div>
+      {/* Tab content */}
+      <div className="mt-3 px-4">
+        {tab === 'transactions' ? (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-[#E6F1FF]">Transaction History</h3>
+              <span className="text-xs text-[#4D6B9A]">{txTotal} total</span>
+            </div>
+
+            {txLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 bg-[#0F1B3D] rounded-xl animate-pulse" />)}
               </div>
-            ))}
-          </div>
-        )}
+            ) : transactions.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <Clock size={32} className="text-[#1A2B4A]" />
+                <p className="text-sm text-[#4D6B9A]">No transactions yet</p>
+                <button onClick={() => setShowDeposit(true)} className="mt-2 text-xs text-[#0066FF] font-semibold hover:text-[#00D4FF] transition-colors">Make your first deposit →</button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center gap-3 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#081226] flex items-center justify-center shrink-0">
+                      {TX_ICONS[tx.type] ?? <XCircle size={14} className="text-[#4D6B9A]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-[#E6F1FF]">{TX_LABELS[tx.type] ?? tx.type}</p>
+                      <p className="text-[10px] text-[#4D6B9A] truncate">{formatTime(tx.createdAt)}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={cn('text-sm font-bold font-mono', isCredit(tx.type) ? 'text-[#00C48C]' : 'text-[#EF4444]')}>
+                        {isCredit(tx.type) ? '+' : '−'}{formatNaira(Number(tx.amountKobo))}
+                      </p>
+                      <p className="text-[10px] text-[#4D6B9A] font-mono">{formatNaira(Number(tx.runningBalanceKobo))}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
-        {total > LIMIT && (
-          <div className="flex items-center justify-between mt-4">
-            <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">← Prev</button>
-            <span className="text-xs text-[#4D6B9A]">Page {page} of {Math.ceil(total / LIMIT)}</span>
-            <button disabled={page * LIMIT >= total} onClick={() => setPage((p) => p + 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">Next →</button>
-          </div>
+            {txTotal > LIMIT && (
+              <div className="flex items-center justify-between mt-4">
+                <button disabled={txPage === 1} onClick={() => setTxPage((p) => p - 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">← Prev</button>
+                <span className="text-xs text-[#4D6B9A]">Page {txPage} of {Math.ceil(txTotal / LIMIT)}</span>
+                <button disabled={txPage * LIMIT >= txTotal} onClick={() => setTxPage((p) => p + 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">Next →</button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold text-[#E6F1FF]">Bet History</h3>
+              <span className="text-xs text-[#4D6B9A]">{betTotal} total</span>
+            </div>
+
+            {betLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-16 bg-[#0F1B3D] rounded-xl animate-pulse" />)}
+              </div>
+            ) : bets.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-12">
+                <Trophy size={32} className="text-[#1A2B4A]" />
+                <p className="text-sm text-[#4D6B9A]">No bets placed yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {bets.map((bet) => <BetRow key={bet.id} bet={bet} />)}
+              </div>
+            )}
+
+            {betTotal > LIMIT && (
+              <div className="flex items-center justify-between mt-4">
+                <button disabled={betPage === 1} onClick={() => setBetPage((p) => p - 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">← Prev</button>
+                <span className="text-xs text-[#4D6B9A]">Page {betPage} of {Math.ceil(betTotal / LIMIT)}</span>
+                <button disabled={betPage * LIMIT >= betTotal} onClick={() => setBetPage((p) => p + 1)} className="text-sm text-[#0066FF] disabled:text-[#4D6B9A] font-semibold">Next →</button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

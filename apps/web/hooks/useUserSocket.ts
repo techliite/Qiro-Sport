@@ -3,11 +3,20 @@
 import { useEffect, useRef } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { useWalletStore } from '@/store/wallet.store'
+import { useToastStore } from '@/store/toast.store'
+import { formatNaira } from '@qiro/ui'
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000'
 
+interface BetSettledPayload {
+  betId: string
+  won: boolean
+  payoutKobo: number
+}
+
 export function useUserSocket(userId: string | undefined) {
   const setBalance = useWalletStore((s) => s.setBalance)
+  const pushToast  = useToastStore((s) => s.push)
   const socketRef  = useRef<Socket | null>(null)
 
   useEffect(() => {
@@ -27,9 +36,19 @@ export function useUserSocket(userId: string | undefined) {
       setBalance(payload.balanceKobo)
     })
 
+    socket.on('user:bet_settled', (payload: BetSettledPayload) => {
+      pushToast({
+        type: payload.won ? 'win' : 'loss',
+        title: payload.won ? 'You won!' : 'Bet settled',
+        body: payload.won
+          ? `Payout: ${formatNaira(payload.payoutKobo)}`
+          : 'Better luck next time',
+      })
+    })
+
     return () => {
       socket.disconnect()
       socketRef.current = null
     }
-  }, [userId, setBalance])
+  }, [userId, setBalance, pushToast])
 }

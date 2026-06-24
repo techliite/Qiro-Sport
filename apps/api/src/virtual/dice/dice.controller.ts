@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common'
+import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { DiceService } from './dice.service'
 import { DiceRollDto } from '@qiro/types'
 import { CurrentUser, AuthUser } from '../../auth/decorators/current-user.decorator'
@@ -6,6 +6,11 @@ import { CurrentUser, AuthUser } from '../../auth/decorators/current-user.decora
 @Controller('virtual/dice')
 export class DiceController {
   constructor(private readonly diceService: DiceService) {}
+
+  @Get('my-bets')
+  getMyBets(@CurrentUser() user: AuthUser, @Query('page') page?: string) {
+    return this.diceService.getUserBets(user.id, Number(page ?? 1))
+  }
 
   @Post('roll')
   roll(@CurrentUser() user: AuthUser, @Body() body: DiceRollDto) {

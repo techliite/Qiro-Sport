@@ -1,5 +1,12 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { SportsService } from './sports.service'
+import { CurrentUser, type AuthUser } from '../auth/decorators/current-user.decorator'
+import { BetSelection } from '@qiro/types'
+
+class PlaceSportBetDto {
+  selections!: BetSelection[]
+  stakeKobo!: number
+}
 
 @Controller('sports')
 export class SportsController {
@@ -10,13 +17,17 @@ export class SportsController {
     return this.sportsService.getFixtures(sport)
   }
 
-  @Post('bets')
-  placeBet(@Body() body: { userId: string; selections: unknown[]; stakeKobo: number }) {
-    return this.sportsService.placeBet(body.userId, body.selections as never, body.stakeKobo)
+  @Get('bets')
+  getMyBets(
+    @CurrentUser() user: AuthUser,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+  ) {
+    return this.sportsService.getBets(user.id, status, Number(page ?? 1))
   }
 
-  @Get('bets')
-  getBets(@Query('userId') userId: string, @Query('status') status?: string) {
-    return this.sportsService.getBets(userId, status)
+  @Post('bets')
+  placeBet(@CurrentUser() user: AuthUser, @Body() body: PlaceSportBetDto) {
+    return this.sportsService.placeBet(user.id, body.selections, body.stakeKobo)
   }
 }

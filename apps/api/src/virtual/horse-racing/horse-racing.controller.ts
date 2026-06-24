@@ -11,6 +11,11 @@ export class HorseRacingController {
     return this.hrService.getCurrentRace()
   }
 
+  @Get('my-bets')
+  getMyBets(@CurrentUser() user: AuthUser, @Query('page') page?: string) {
+    return this.hrService.getUserBets(user.id, Number(page ?? 1))
+  }
+
   @Get('results')
   getResults(@Query('limit') limit?: string) {
     return this.hrService.getRecentResults(Number(limit ?? 10))
