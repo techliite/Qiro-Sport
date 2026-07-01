@@ -37,12 +37,12 @@ function formatDate(iso: string) {
 }
 
 export default function UsersPage() {
-  const [query, setQuery]   = useState('')
-  const [users, setUsers]   = useState<User[]>([])
+  const [query, setQuery]     = useState('')
+  const [users, setUsers]     = useState<User[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
   const [confirm, setConfirm] = useState<{ user: User; action: 'ban' | 'unban' | 'suspend' } | null>(null)
-  const [acting, setActing] = useState(false)
+  const [acting, setActing]   = useState(false)
 
   const search = useCallback(async (q: string) => {
     setLoading(true); setError('')
@@ -113,34 +113,43 @@ export default function UsersPage() {
             const cfg = STATUS_CFG[user.status]
             const StatusIcon = cfg.icon
             return (
-              <div key={user.id} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3 flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-[#0066FF]/15 border border-[#0066FF]/25 flex items-center justify-center shrink-0">
-                  <span className="text-[11px] font-black text-[#0066FF]">{user.username.slice(0,2).toUpperCase()}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#E6F1FF]">@{user.username}</span>
-                    {!user.phoneVerified && <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 rounded-md">UNVERIFIED</span>}
+              <div key={user.id} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Identity row */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-[#0066FF]/15 border border-[#0066FF]/25 flex items-center justify-center shrink-0">
+                    <span className="text-[11px] font-black text-[#0066FF]">{user.username.slice(0,2).toUpperCase()}</span>
                   </div>
-                  <p className="text-xs text-[#4D6B9A]">{user.phone} · Joined {formatDate(user.createdAt)}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-bold text-[#E6F1FF]">@{user.username}</span>
+                      {!user.phoneVerified && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/20 rounded-md">UNVERIFIED</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-[#4D6B9A]">{user.phone} · Joined {formatDate(user.createdAt)}</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-mono font-bold text-[#E6F1FF]">{user.wallet ? formatNaira(user.wallet.balanceKobo) : '—'}</p>
-                  <p className="text-[10px] text-[#4D6B9A]">wallet</p>
-                </div>
-                <span className={cn('flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0', cfg.color)}>
-                  <StatusIcon size={10} />{cfg.label}
-                </span>
-                <div className="flex gap-1.5 shrink-0">
-                  {user.status !== 'BANNED' && (
-                    <button onClick={() => setConfirm({ user, action: 'ban' })} className="px-2.5 py-1.5 bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-xs font-semibold rounded-lg hover:bg-[#EF4444]/20 transition-all">Ban</button>
-                  )}
-                  {user.status === 'BANNED' && (
-                    <button onClick={() => setConfirm({ user, action: 'unban' })} className="px-2.5 py-1.5 bg-[#00C48C]/10 border border-[#00C48C]/20 text-[#00C48C] text-xs font-semibold rounded-lg hover:bg-[#00C48C]/20 transition-all">Unban</button>
-                  )}
-                  {user.status === 'ACTIVE' && (
-                    <button onClick={() => setConfirm({ user, action: 'suspend' })} className="px-2.5 py-1.5 bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#F59E0B] text-xs font-semibold rounded-lg hover:bg-[#F59E0B]/20 transition-all">Suspend</button>
-                  )}
+
+                {/* Status + wallet + actions row */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 sm:shrink-0">
+                  <div className="sm:text-right">
+                    <p className="text-sm font-mono font-bold text-[#E6F1FF]">{user.wallet ? formatNaira(user.wallet.balanceKobo) : '—'}</p>
+                    <p className="text-[10px] text-[#4D6B9A]">wallet</p>
+                  </div>
+                  <span className={cn('flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0', cfg.color)}>
+                    <StatusIcon size={10} />{cfg.label}
+                  </span>
+                  <div className="flex gap-1.5 shrink-0">
+                    {user.status !== 'BANNED' && (
+                      <button onClick={() => setConfirm({ user, action: 'ban' })} className="px-2.5 py-1.5 bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-xs font-semibold rounded-lg hover:bg-[#EF4444]/20 transition-all">Ban</button>
+                    )}
+                    {user.status === 'BANNED' && (
+                      <button onClick={() => setConfirm({ user, action: 'unban' })} className="px-2.5 py-1.5 bg-[#00C48C]/10 border border-[#00C48C]/20 text-[#00C48C] text-xs font-semibold rounded-lg hover:bg-[#00C48C]/20 transition-all">Unban</button>
+                    )}
+                    {user.status === 'ACTIVE' && (
+                      <button onClick={() => setConfirm({ user, action: 'suspend' })} className="px-2.5 py-1.5 bg-[#F59E0B]/10 border border-[#F59E0B]/20 text-[#F59E0B] text-xs font-semibold rounded-lg hover:bg-[#F59E0B]/20 transition-all">Suspend</button>
+                    )}
+                  </div>
                 </div>
               </div>
             )

@@ -139,7 +139,7 @@ export default function WithdrawalsPage() {
   const pendingCount = requests.filter((r) => r.status === 'PENDING').length
 
   return (
-    <div className="p-6 max-w-5xl">
+    <div className="max-w-5xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-extrabold text-[#E6F1FF]">Withdrawals</h1>
@@ -198,36 +198,41 @@ export default function WithdrawalsPage() {
             const isPending = req.status === 'PENDING'
 
             return (
-              <div key={req.id} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-4 flex items-center gap-4">
-                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold shrink-0 ${cfg.bg} ${cfg.color}`}>
-                  <StatusIcon size={11} />
-                  {cfg.label}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-[#E6F1FF]">{req.user?.username ?? '—'}</span>
-                    <span className="text-xs text-[#4D6B9A]">{req.user?.phone}</span>
+              <div key={req.id} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Info row */}
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold shrink-0 ${cfg.bg} ${cfg.color}`}>
+                    <StatusIcon size={11} />
+                    {cfg.label}
                   </div>
-                  <div className="text-xs text-[#4D6B9A] mt-0.5">
-                    {req.accountName ?? req.accountNumber} · Bank {req.bankCode} · {formatDate(req.createdAt)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-[#E6F1FF] truncate">{req.user?.username ?? '—'}</span>
+                      <span className="text-xs text-[#4D6B9A] hidden sm:inline">{req.user?.phone}</span>
+                    </div>
+                    <div className="text-xs text-[#4D6B9A] mt-0.5 truncate">
+                      {req.accountName ?? req.accountNumber} · Bank {req.bankCode} · {formatDate(req.createdAt)}
+                    </div>
+                    {req.notes && <p className="text-xs text-[#4D6B9A] mt-0.5 italic truncate">"{req.notes}"</p>}
                   </div>
-                  {req.notes && <p className="text-xs text-[#4D6B9A] mt-0.5 italic">"{req.notes}"</p>}
+                  <div className="text-right shrink-0">
+                    <p className="font-mono font-bold text-[#E6F1FF]">{formatNaira(req.amountKobo)}</p>
+                    <p className="text-[10px] text-[#4D6B9A] font-mono">{req.id.slice(0, 8)}</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="font-mono font-bold text-[#E6F1FF]">{formatNaira(req.amountKobo)}</p>
-                  <p className="text-[10px] text-[#4D6B9A] font-mono">{req.id.slice(0, 8)}</p>
-                </div>
+
+                {/* Action buttons — full-width on mobile */}
                 {isPending && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex gap-2 sm:shrink-0">
                     <button
                       onClick={() => setAction({ request: req, type: 'approve' })}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00C48C]/10 border border-[#00C48C]/20 text-[#00C48C] text-xs font-semibold rounded-lg hover:bg-[#00C48C]/20 transition-all"
+                      className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-[#00C48C]/10 border border-[#00C48C]/20 text-[#00C48C] text-xs font-semibold rounded-lg hover:bg-[#00C48C]/20 transition-all"
                     >
                       <CheckCircle size={12} /> Approve
                     </button>
                     <button
                       onClick={() => setAction({ request: req, type: 'reject' })}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-xs font-semibold rounded-lg hover:bg-[#EF4444]/20 transition-all"
+                      className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-2 bg-[#EF4444]/10 border border-[#EF4444]/20 text-[#EF4444] text-xs font-semibold rounded-lg hover:bg-[#EF4444]/20 transition-all"
                     >
                       <XCircle size={12} /> Reject
                     </button>
