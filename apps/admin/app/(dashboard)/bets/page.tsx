@@ -103,7 +103,7 @@ export default function BetsPage() {
           ))}
         </div>
         <div className="flex gap-1.5 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl p-1">
-          {[['ALL','All Games'],['VIRTUAL_FOOTBALL','Football'],['DICE','Dice']] .map(([g, label]) => (
+          {([['ALL','All'],['VIRTUAL_FOOTBALL','Football'],['DICE','Dice'],['HORSE_RACING','Racing']] as [string, string][]).map(([g, label]) => (
             <button key={g} onClick={() => setGameFilter(g)} className={cn('px-3 py-1 rounded-lg text-xs font-semibold transition-all', gameFilter === g ? 'bg-[#0066FF] text-white' : 'text-[#4D6B9A] hover:text-[#E6F1FF]')}>
               {label}
             </button>

@@ -136,7 +136,7 @@ export default function ConfigPage() {
       ) : (
         <div className="space-y-4">
           {Object.entries(DEFAULTS).map(([gameType, keys]) => {
-            const meta = GAME_META[gameType]
+            const meta = GAME_META[gameType]!
             const Icon = meta.icon
             return (
               <div key={gameType} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-2xl overflow-hidden">
