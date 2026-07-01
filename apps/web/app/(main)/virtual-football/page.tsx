@@ -681,18 +681,18 @@ export default function VirtualFootballPage() {
             </button>
           </div>
 
-          {/* Backdrop */}
+          {/* Backdrop — z-[55] sits above nav (z-50) but below sheet */}
           {slipOpen && (
             <div
-              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+              className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[55]"
               onClick={() => setSlipOpen(false)}
             />
           )}
 
-          {/* Slide-up sheet */}
+          {/* Slide-up sheet — z-[60] clears the bottom nav (z-50) */}
           <div
             className={cn(
-              'lg:hidden fixed inset-x-0 bottom-0 z-50 bg-[#0F1B3D] rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.6)] transition-transform duration-300',
+              'lg:hidden fixed inset-x-0 bottom-0 z-[60] bg-[#0F1B3D] rounded-t-2xl shadow-[0_-8px_40px_rgba(0,0,0,0.6)] transition-transform duration-300',
               slipOpen ? 'translate-y-0' : 'translate-y-full',
             )}
             style={{ maxHeight: '85dvh' }}
@@ -711,7 +711,7 @@ export default function VirtualFootballPage() {
               </button>
             </div>
 
-            <div className="px-4 pb-8 overflow-y-auto" style={{ maxHeight: 'calc(85dvh - 70px)' }}>
+            <div className="px-4 pb-10 overflow-y-auto" style={{ maxHeight: 'calc(85dvh - 70px)' }}>
               <BetSlip
                 selections={selections}
                 onRemove={removeSelection}

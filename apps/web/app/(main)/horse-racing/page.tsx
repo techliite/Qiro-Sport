@@ -426,13 +426,13 @@ export default function HorseRacingPage() {
         </div>
       )}
 
-      {/* Mobile: slide-up slip */}
+      {/* Mobile: slide-up slip — z-[60] to clear the bottom nav (z-50) */}
       {race && (
         <div
-          className={cn('lg:hidden fixed inset-x-0 bottom-0 z-50 transition-transform duration-300 ease-out', slipOpen ? 'translate-y-0' : 'translate-y-full')}
+          className={cn('lg:hidden fixed inset-x-0 bottom-0 z-[60] transition-transform duration-300 ease-out', slipOpen ? 'translate-y-0' : 'translate-y-full')}
           style={{ maxHeight: '85dvh' }}
         >
-          <div className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-t-3xl p-5 overflow-y-auto" style={{ maxHeight: '85dvh' }}>
+          <div className="bg-[#0F1B3D] border-t border-x border-[#1A2B4A] rounded-t-3xl p-5 pb-8 overflow-y-auto" style={{ maxHeight: '85dvh' }}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-[#E6F1FF]">Bet Slip ({selections.length})</h3>
               <button onClick={() => setSlipOpen(false)} className="w-7 h-7 rounded-full bg-[#1A2B4A] flex items-center justify-center text-[#4D6B9A]"><X size={13} /></button>
@@ -441,7 +441,7 @@ export default function HorseRacingPage() {
           </div>
         </div>
       )}
-      {slipOpen && <div className="lg:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setSlipOpen(false)} />}
+      {slipOpen && <div className="lg:hidden fixed inset-0 z-[55] bg-black/50" onClick={() => setSlipOpen(false)} />}
     </div>
   )
 }
