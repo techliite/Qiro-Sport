@@ -77,7 +77,7 @@ export function WithdrawalModal({ open, onClose, onSuccess }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleClose} />
 
       <div className="relative w-full max-w-sm bg-[#0F1B3D] border border-[#1A2B4A] rounded-2xl p-6 shadow-[0_0_60px_rgba(0,0,0,0.6)]">
