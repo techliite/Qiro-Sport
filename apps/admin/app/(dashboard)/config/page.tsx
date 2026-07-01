@@ -54,7 +54,7 @@ function mergeWithDefaults(remoteRows: GameConfig[]): ConfigMap {
   const map: ConfigMap = JSON.parse(JSON.stringify(DEFAULTS))
   for (const row of remoteRows) {
     if (!map[row.gameType]) map[row.gameType] = {}
-    map[row.gameType][row.key] = row.value
+    map[row.gameType]![row.key] = row.value
   }
   return map
 }
@@ -104,9 +104,10 @@ export default function ConfigPage() {
       }))
       setEdits((prev) => {
         const next = { ...prev }
-        if (next[gameType]) {
-          delete next[gameType][key]
-          if (!Object.keys(next[gameType]).length) delete next[gameType]
+        const gameMap = next[gameType]
+        if (gameMap) {
+          delete gameMap[key]
+          if (!Object.keys(gameMap).length) delete next[gameType]
         }
         return next
       })
@@ -116,7 +117,7 @@ export default function ConfigPage() {
   }
 
   const isDirty = (gameType: string, key: string) =>
-    edits[gameType]?.[key] !== undefined && edits[gameType][key] !== configs[gameType]?.[key]
+    edits[gameType]?.[key] !== undefined && edits[gameType]?.[key] !== configs[gameType]?.[key]
 
   return (
     <div className="max-w-3xl">
