@@ -1,11 +1,17 @@
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
+import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import { AppModule } from './app.module'
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true })
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })
+
+  // Number of proxy hops in front of the API (Cloudflare → Railway = 2) so req.ip is the
+  // real client IP. Admin IP whitelisting depends on this being correct.
+  const trustProxy = process.env['TRUST_PROXY']
+  if (trustProxy) app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy)
 
   app.use(cookieParser())
   app.setGlobalPrefix('api/v1')

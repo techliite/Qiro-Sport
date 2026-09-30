@@ -1,9 +1,13 @@
-import { Controller, Get, Patch, Body, Query, Param } from '@nestjs/common'
+import { Controller, Get, Patch, Body, Query, Param, UseGuards } from '@nestjs/common'
 import { AdminService } from './admin.service'
 import { Public } from '../auth/decorators/public.decorator'
+import { AdminIpGuard } from './auth/admin-ip.guard'
+import { AdminJwtGuard } from './auth/admin-jwt.guard'
+import { CurrentAdmin, type AuthAdmin } from './auth/current-admin.decorator'
 
-// Phase 5: replace @Public() with IP whitelist guard + dedicated AdminJwtGuard
+// @Public() only opts out of the player JwtAuthGuard; admin guards apply below
 @Public()
+@UseGuards(AdminIpGuard, AdminJwtGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -37,8 +41,9 @@ export class AdminController {
   reviewWithdrawal(
     @Param('id') id: string,
     @Body() body: { status: 'APPROVED' | 'REJECTED'; notes?: string },
+    @CurrentAdmin() admin: AuthAdmin,
   ) {
-    return this.adminService.reviewWithdrawal(id, body.status, 'system', body.notes)
+    return this.adminService.reviewWithdrawal(id, body.status, admin.id, body.notes)
   }
 
   @Get('bets/sport')

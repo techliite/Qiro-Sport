@@ -2,8 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, ArrowDownToLine, Receipt, BarChart2, Settings } from 'lucide-react'
+import { Users, ArrowDownToLine, Receipt, BarChart2, Settings, LogOut } from 'lucide-react'
 import { cn } from '@qiro/ui'
+import { adminApi, ADMIN_TOKEN_KEY } from '@/lib/api'
+
+async function logout() {
+  try {
+    await adminApi.post('/admin/auth/logout')
+  } finally {
+    localStorage.removeItem(ADMIN_TOKEN_KEY)
+    window.location.href = '/login'
+  }
+}
 
 const navItems = [
   { href: '/withdrawals', label: 'Withdrawals', icon: ArrowDownToLine },
@@ -42,6 +52,13 @@ export function AdminSidebar() {
           </Link>
         )
       })}
+      <button
+        onClick={logout}
+        className="mt-auto flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-[#4D6B9A] hover:bg-[#0F1B3D] hover:text-[#EF4444] transition-all"
+      >
+        <LogOut size={16} />
+        Log out
+      </button>
     </aside>
   )
 }
@@ -67,6 +84,13 @@ export function MobileAdminNav() {
           </Link>
         )
       })}
+      <button
+        onClick={logout}
+        className="flex-1 flex flex-col items-center gap-1 py-2.5 text-[#4D6B9A] transition-colors"
+      >
+        <LogOut size={18} />
+        <span className="text-[9px] font-semibold leading-none">Log out</span>
+      </button>
     </nav>
   )
 }
