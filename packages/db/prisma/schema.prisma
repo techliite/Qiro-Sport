@@ -138,16 +138,27 @@ model SportBet {
 }
 
 model SportSelection {
-  id          String    @id @default(uuid())
-  betId       String
-  fixtureId   String
-  market      String
-  pick        String
-  oddsDecimal Decimal   @db.Decimal(8, 4)
-  result      BetStatus @default(PENDING)
+  id           String    @id @default(uuid())
+  betId        String
+  fixtureId    String    // The Odds API event id
+  market       String
+  pick         String
+  oddsDecimal  Decimal   @db.Decimal(8, 4)   // Locked at bet time from the server cache
+  result       BetStatus @default(PENDING)
 
-  bet         SportBet  @relation(fields: [betId], references: [id])
+  // Fixture snapshot — needed to fetch scores and to show the bet after the odds cache moves on.
+  // Nullable only for rows created before settlement existed.
+  sportKey     String?
+  homeTeam     String?
+  awayTeam     String?
+  commenceTime DateTime?
+  homeScore    Int?
+  awayScore    Int?
 
+  bet          SportBet  @relation(fields: [betId], references: [id])
+
+  @@index([result, commenceTime])
+  @@index([betId])
   @@map("sport_selections")
 }
 

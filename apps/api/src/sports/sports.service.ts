@@ -4,12 +4,17 @@ import { ConfigService } from '@nestjs/config'
 import { prisma } from '@qiro/db'
 import { BetSelection, BetStatus, TransactionType } from '@qiro/types'
 import { WalletService } from '../wallet/wallet.service'
+import { GameConfigService } from '../config/game-config.service'
 import { randomUUID } from 'node:crypto'
+import { DEFAULT_MAX_PAYOUT_KOBO, TOTALS_LINE } from './settlement'
+
+const MAX_SELECTIONS = 10
+const ODDS_MAX_AGE_MS = 10 * 60_000
 
 // ─── Odds cache (in-memory, refreshed every 5 min by cron) ───────────────────
 // In production this would be Redis. The shape mirrors The Odds API response.
 
-interface CachedFixture {
+export interface CachedFixture {
   id: string
   sport: string
   homeTeam: string
@@ -54,6 +59,7 @@ export class SportsService {
   constructor(
     private readonly walletService: WalletService,
     private readonly config: ConfigService,
+    private readonly gameConfig: GameConfigService,
   ) {
     this.oddsApiKey = this.config.get<string>('ODDS_API_KEY')
     // Seed mock fixtures into cache on startup
@@ -75,7 +81,7 @@ export class SportsService {
       const data = await res.json() as Array<{
         id: string; home_team: string; away_team: string; sport_key: string
         commence_time: string
-        bookmakers: Array<{ markets: Array<{ key: string; outcomes: Array<{ name: string; price: number }> }> }>
+        bookmakers: Array<{ markets: Array<{ key: string; outcomes: Array<{ name: string; price: number; point?: number }> }> }>
       }>
 
       for (const event of data) {
@@ -85,6 +91,10 @@ export class SportsService {
         const h2hMarket = bookmaker.markets.find((m) => m.key === 'h2h')
         const totalsMarket = bookmaker.markets.find((m) => m.key === 'totals')
         if (!h2hMarket) continue
+
+        // Bookmakers quote several goal lines; we only offer (and settle) O/U 2.5
+        const over = totalsMarket?.outcomes.find((o) => o.name === 'Over' && o.point === TOTALS_LINE)?.price
+        const under = totalsMarket?.outcomes.find((o) => o.name === 'Under' && o.point === TOTALS_LINE)?.price
 
         const home = h2hMarket.outcomes.find((o) => o.name === event.home_team)?.price ?? 2
         const away = h2hMarket.outcomes.find((o) => o.name === event.away_team)?.price ?? 2
@@ -98,11 +108,7 @@ export class SportsService {
           commenceTime: event.commence_time,
           odds: {
             h2h: { home, draw, away },
-            totals: totalsMarket ? {
-              over: totalsMarket.outcomes.find((o) => o.name === 'Over')?.price ?? 1.90,
-              under: totalsMarket.outcomes.find((o) => o.name === 'Under')?.price ?? 1.90,
-              line: 2.5,
-            } : undefined,
+            totals: over && under ? { over, under, line: TOTALS_LINE } : undefined,
           },
           updatedAt: Date.now(),
         })
@@ -127,51 +133,78 @@ export class SportsService {
 
   async placeBet(userId: string, selections: BetSelection[], stakeKobo: number) {
     if (!selections?.length) throw new BadRequestException('No selections provided')
-    if (stakeKobo < 10_000) throw new BadRequestException('Minimum stake is ₦100')
-    if (stakeKobo > 5_000_000) throw new BadRequestException('Maximum stake is ₦50,000')
+    if (selections.length > MAX_SELECTIONS) throw new BadRequestException(`Maximum ${MAX_SELECTIONS} selections per bet`)
+    if (!Number.isInteger(stakeKobo)) throw new BadRequestException('Invalid stake')
 
-    // Validate all selections and compute total odds
+    const [minStake, maxStake, maxPayout] = await Promise.all([
+      this.gameConfig.getNumber('SPORTS', 'min_stake_kobo', 10_000),
+      this.gameConfig.getNumber('SPORTS', 'max_stake_kobo', 5_000_000),
+      this.gameConfig.getNumber('SPORTS', 'max_payout_kobo', DEFAULT_MAX_PAYOUT_KOBO),
+    ])
+    if (stakeKobo < minStake) throw new BadRequestException(`Minimum stake is ₦${minStake / 100}`)
+    if (stakeKobo > maxStake) throw new BadRequestException(`Maximum stake is ₦${maxStake / 100}`)
+
+    const fixtureIds = selections.map((s) => s.fixtureId)
+    if (new Set(fixtureIds).size !== fixtureIds.length) {
+      throw new BadRequestException('Only one selection per match is allowed')
+    }
+
+    // Validate all selections and lock in the server's odds
     let totalOdds = 1
-    for (const sel of selections) {
+    const locked = selections.map((sel) => {
       const fixture = fixtureCache.get(sel.fixtureId)
       if (!fixture) throw new BadRequestException(`Fixture ${sel.fixtureId} not found or odds expired`)
 
       const minsToStart = (new Date(fixture.commenceTime).getTime() - Date.now()) / 60_000
       if (minsToStart < 2) throw new BadRequestException(`Betting closed for ${fixture.homeTeam} vs ${fixture.awayTeam}`)
 
+      // Mock fixtures (no API key) are never refreshed, so only enforce freshness on live odds
+      if (this.oddsApiKey && Date.now() - fixture.updatedAt > ODDS_MAX_AGE_MS) {
+        throw new BadRequestException(`Odds for ${fixture.homeTeam} vs ${fixture.awayTeam} are out of date — refresh and try again`)
+      }
+
       // Verify the odds the client submitted haven't drifted >5% from our cache
       const cachedOdds = this.resolveOdds(fixture, sel.market, sel.pick)
       if (Math.abs(cachedOdds - sel.oddsDecimal) / cachedOdds > 0.05) {
-        throw new BadRequestException(`Odds for ${sel.fixtureId} have changed — refresh and try again`)
+        throw new BadRequestException(`Odds for ${fixture.homeTeam} vs ${fixture.awayTeam} have changed — refresh and try again`)
       }
 
       totalOdds *= cachedOdds
-    }
+      return { sel, fixture, oddsDecimal: cachedOdds }
+    })
 
-    totalOdds = Math.round(totalOdds * 100) / 100
-    const potentialWinKobo = Math.floor(stakeKobo * totalOdds)
+    totalOdds = Math.round(totalOdds * 10_000) / 10_000
+    const potentialWinKobo = Math.min(Math.floor(stakeKobo * totalOdds), maxPayout)
     const ref = `sport:stake:${randomUUID()}`
 
-    // Debit wallet first
-    await this.walletService.debit(userId, stakeKobo, TransactionType.STAKE, ref, { gameType: 'SPORT' })
-
-    // Create bet + selections atomically
-    const bet = await prisma.sportBet.create({
-      data: {
-        userId,
-        stakeKobo: BigInt(stakeKobo),
-        totalOdds,
-        potentialWinKobo: BigInt(potentialWinKobo),
-        selections: {
-          create: selections.map((sel) => ({
-            fixtureId: sel.fixtureId,
-            market: sel.market,
-            pick: sel.pick,
-            oddsDecimal: sel.oddsDecimal,
-          })),
+    // Debit and bet creation commit together — a failed insert must not lose the stake
+    const bet = await prisma.$transaction(async (tx) => {
+      const created = await tx.sportBet.create({
+        data: {
+          userId,
+          stakeKobo: BigInt(stakeKobo),
+          totalOdds,
+          potentialWinKobo: BigInt(potentialWinKobo),
+          selections: {
+            create: locked.map(({ sel, fixture, oddsDecimal }) => ({
+              fixtureId: sel.fixtureId,
+              market: sel.market,
+              pick: sel.pick,
+              oddsDecimal,
+              sportKey: fixture.sport,
+              homeTeam: fixture.homeTeam,
+              awayTeam: fixture.awayTeam,
+              commenceTime: new Date(fixture.commenceTime),
+            })),
+          },
         },
-      },
-      include: { selections: true },
+        include: { selections: true },
+      })
+      await this.walletService.debitInTx(tx, userId, stakeKobo, TransactionType.STAKE, ref, {
+        gameType: 'SPORT',
+        betId: created.id,
+      })
+      return created
     })
 
     return {
@@ -211,12 +244,18 @@ export class SportsService {
         actualWinKobo: b.actualWinKobo ? Number(b.actualWinKobo) : null,
         status: b.status,
         createdAt: b.createdAt.toISOString(),
+        settledAt: b.settledAt?.toISOString() ?? null,
         selections: b.selections.map((s) => ({
           fixtureId: s.fixtureId,
           market: s.market,
           pick: s.pick,
           oddsDecimal: Number(s.oddsDecimal),
           result: s.result,
+          homeTeam: s.homeTeam,
+          awayTeam: s.awayTeam,
+          commenceTime: s.commenceTime?.toISOString() ?? null,
+          homeScore: s.homeScore,
+          awayScore: s.awayScore,
         })),
       })),
       total,

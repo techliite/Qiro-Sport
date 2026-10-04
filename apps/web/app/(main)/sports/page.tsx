@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 import { Trophy, Dices, Zap, ChevronRight, TrendingUp, Clock } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@qiro/ui'
+import { HighlightReel } from '@/components/lobby/highlight-reel'
+import { PromoBanner } from '@/components/lobby/promo-banner'
 
 interface RecentResult {
   id: string
@@ -34,7 +36,7 @@ const GAMES = [
     label: 'Dice',
     tag: 'LIVE',
     tagColor: 'text-[#00C48C] bg-[#00C48C]/10 border-[#00C48C]/20',
-    description: 'Pick a number. Roll over or under. Instant payouts up to 98x.',
+    description: 'Pick a number. Roll over or under. Instant payouts up to 49x.',
     icon: Dices,
     gradient: 'from-[#00D4FF]/20 to-[#0066FF]/5',
     glowColor: 'rgba(0,212,255,0.25)',
@@ -56,8 +58,8 @@ const GAMES = [
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col items-center gap-0.5 px-4 py-2 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl">
-      <span className="text-base font-black text-[#E6F1FF] tabular-nums">{value}</span>
+    <div className="flex flex-col items-center justify-center gap-0.5 px-4 py-2 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl">
+      <span className="text-base sm:text-xl font-black text-[#E6F1FF] tabular-nums">{value}</span>
       <span className="text-[10px] text-[#4D6B9A] font-medium">{label}</span>
     </div>
   )
@@ -81,35 +83,23 @@ export default function SportsLobbyPage() {
 
   return (
     <div className="flex flex-col min-h-full pb-6">
-      {/* Hero */}
-      <div className="relative px-4 pt-6 pb-8 overflow-hidden">
-        {/* Ambient glow */}
+      {/* Hero — full-width promo carousel */}
+      <div className="px-4 pt-4">
+        <PromoBanner />
+      </div>
+
+      {/* Quick stats + live highlight reel */}
+      <div className="relative px-4 pt-4 pb-6">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#0066FF]/10 rounded-full blur-3xl" />
-          <div className="absolute top-4 right-0 w-48 h-48 bg-[#00D4FF]/8 rounded-full blur-3xl" />
         </div>
-
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-6 h-6 rounded-lg bg-[#0066FF] flex items-center justify-center shadow-[0_0_12px_rgba(0,102,255,0.5)]">
-              <Zap size={13} fill="white" className="text-white" />
-            </div>
-            <span className="text-[10px] font-bold text-[#0066FF] uppercase tracking-widest">Qiro Sport</span>
-          </div>
-          <h1 className="text-2xl font-black text-[#E6F1FF] leading-tight mb-1">
-            Play & Win<br />
-            <span className="text-[#0066FF]">Instantly</span>
-          </h1>
-          <p className="text-xs text-[#4D6B9A] max-w-xs">
-            Virtual games. Real payouts. New rounds every 5 minutes.
-          </p>
-
-          {/* Stats */}
-          <div className="flex gap-2 mt-4">
+        <div className="relative flex items-stretch gap-3">
+          <div className="flex-1 min-w-0 grid grid-rows-3 sm:grid-rows-1 sm:grid-cols-3 gap-2 sm:self-center">
             <StatPill label="Games" value="3 Live" />
             <StatPill label="Min Stake" value="₦100" />
             <StatPill label="Max Win" value="₦1M" />
           </div>
+          <HighlightReel className="w-[172px] sm:w-[280px] lg:w-[420px] shrink-0" />
         </div>
       </div>
 

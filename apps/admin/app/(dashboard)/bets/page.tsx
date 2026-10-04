@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, AlertCircle, Receipt, Trophy, Dices } from 'lucide-react'
-import { adminApi } from '@/lib/api'
+import { RefreshCw, AlertCircle, Receipt, Trophy, Dices, Ban, Goal } from 'lucide-react'
+import { adminApi, getApiError } from '@/lib/api'
 import { cn } from '@qiro/ui'
 
 interface VirtualBet {
@@ -14,9 +14,36 @@ interface VirtualBet {
   oddsDecimal: string
   stakeKobo: string
   payoutKobo: string | null
-  status: 'PENDING' | 'WON' | 'LOST' | 'VOID'
+  status: BetStatus
   createdAt: string
   user: { username: string }
+}
+
+type BetStatus = 'PENDING' | 'WON' | 'LOST' | 'VOID'
+
+interface SportSelection {
+  id: string
+  fixtureId: string
+  market: string
+  pick: string
+  oddsDecimal: string
+  result: BetStatus
+  homeTeam: string | null
+  awayTeam: string | null
+  homeScore: number | null
+  awayScore: number | null
+}
+
+interface SportBet {
+  id: string
+  stakeKobo: string
+  totalOdds: string
+  potentialWinKobo: string
+  actualWinKobo: string | null
+  status: BetStatus
+  createdAt: string
+  user: { username: string }
+  selections: SportSelection[]
 }
 
 const STATUS_CFG = {
@@ -27,19 +54,11 @@ const STATUS_CFG = {
 }
 
 const GAME_CFG = {
+  SPORTS:           { label: 'Sports',   icon: Goal,   color: 'text-[#00C48C] bg-[#00C48C]/10 border-[#00C48C]/20' },
   VIRTUAL_FOOTBALL: { label: 'Football', icon: Trophy, color: 'text-[#0066FF] bg-[#0066FF]/10 border-[#0066FF]/20' },
   DICE:             { label: 'Dice',     icon: Dices,  color: 'text-[#00D4FF] bg-[#00D4FF]/10 border-[#00D4FF]/20' },
   HORSE_RACING:     { label: 'Racing',   icon: Trophy, color: 'text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/20' },
 }
-
-const MOCK_BETS: VirtualBet[] = [
-  { id:'1', gameType:'VIRTUAL_FOOTBALL', roundId:'round_abc123', market:'1x2',       pick:'1',        oddsDecimal:'2.10', stakeKobo:'50000',  payoutKobo:'105000', status:'WON',     createdAt: new Date().toISOString(),                     user:{username:'hamid_test'} },
-  { id:'2', gameType:'DICE',             roundId:'round_def456', market:'dice',       pick:'OVER:60',  oddsDecimal:'2.35', stakeKobo:'100000', payoutKobo:null,     status:'LOST',    createdAt: new Date(Date.now()-60000).toISOString(),     user:{username:'jane_doe'} },
-  { id:'3', gameType:'VIRTUAL_FOOTBALL', roundId:'round_ghi789', market:'btts',       pick:'yes',      oddsDecimal:'1.75', stakeKobo:'200000', payoutKobo:null,     status:'PENDING', createdAt: new Date(Date.now()-120000).toISOString(),   user:{username:'hamid_test'} },
-  { id:'4', gameType:'VIRTUAL_FOOTBALL', roundId:'round_jkl012', market:'over_under', pick:'under',    oddsDecimal:'1.95', stakeKobo:'75000',  payoutKobo:null,     status:'LOST',    createdAt: new Date(Date.now()-300000).toISOString(),   user:{username:'john_test'} },
-  { id:'5', gameType:'DICE',             roundId:'round_mno345', market:'dice',       pick:'UNDER:40', oddsDecimal:'2.45', stakeKobo:'50000',  payoutKobo:'122500', status:'WON',     createdAt: new Date(Date.now()-600000).toISOString(),   user:{username:'jane_doe'} },
-  { id:'6', gameType:'VIRTUAL_FOOTBALL', roundId:'round_pqr678', market:'1x2',       pick:'X',        oddsDecimal:'3.40', stakeKobo:'30000',  payoutKobo:null,     status:'LOST',    createdAt: new Date(Date.now()-900000).toISOString(),   user:{username:'blocked_user'} },
-]
 
 function formatNaira(kobo: string | number | null) {
   if (kobo == null) return '—'
@@ -50,32 +69,47 @@ function formatTime(iso: string) {
   return new Intl.DateTimeFormat('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso))
 }
 
-type StatusFilter = 'ALL' | 'PENDING' | 'WON' | 'LOST'
+type StatusFilter = 'ALL' | BetStatus
+
+const PICK_LABELS: Record<string, string> = { '1': 'Home', X: 'Draw', '2': 'Away', Over: 'Over 2.5', Under: 'Under 2.5' }
 
 export default function BetsPage() {
   const [bets, setBets]             = useState<VirtualBet[]>([])
+  const [sportBets, setSportBets]   = useState<SportBet[]>([])
   const [filter, setFilter]         = useState<StatusFilter>('ALL')
   const [gameFilter, setGameFilter] = useState<string>('ALL')
   const [loading, setLoading]       = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError]           = useState('')
+  const [voiding, setVoiding]       = useState<SportBet | null>(null)
+
+  const isSports = gameFilter === 'SPORTS'
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true)
     setError('')
     try {
-      const params = gameFilter !== 'ALL' ? `?gameType=${gameFilter}` : ''
-      const res = await adminApi.get<VirtualBet[]>(`/admin/bets/virtual${params}`)
-      setBets(res.data?.length ? res.data : MOCK_BETS)
-    } catch { setBets(MOCK_BETS) }
-    finally { setLoading(false); setRefreshing(false) }
+      if (gameFilter === 'SPORTS') {
+        const res = await adminApi.get<SportBet[]>('/admin/bets/sport')
+        setSportBets(res.data ?? [])
+      } else {
+        const params = gameFilter !== 'ALL' ? `?gameType=${gameFilter}` : ''
+        const res = await adminApi.get<VirtualBet[]>(`/admin/bets/virtual${params}`)
+        setBets(res.data ?? [])
+      }
+    } catch (err) {
+      setError(getApiError(err, 'Could not load bets'))
+    } finally { setLoading(false); setRefreshing(false) }
   }, [gameFilter])
 
   useEffect(() => { load() }, [load])
 
-  const visible    = bets.filter((b) => filter === 'ALL' || b.status === filter)
-  const totalStake = visible.reduce((a, b) => a + Number(b.stakeKobo), 0)
-  const totalPayout = visible.reduce((a, b) => a + Number(b.payoutKobo ?? 0), 0)
+  const rows: (VirtualBet | SportBet)[] = isSports ? sportBets : bets
+  const visible    = rows.filter((b) => filter === 'ALL' || b.status === filter)
+  // Void bets were refunded — neither stake kept nor payout
+  const settled    = visible.filter((b) => b.status !== 'VOID')
+  const totalStake = settled.reduce((a, b) => a + Number(b.stakeKobo), 0)
+  const totalPayout = settled.reduce((a, b) => a + Number(('payoutKobo' in b ? b.payoutKobo : b.actualWinKobo) ?? 0), 0)
   const ggr        = totalStake - totalPayout
 
   return (
@@ -96,14 +130,14 @@ export default function BetsPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-5">
         <div className="flex gap-1.5 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl p-1">
-          {(['ALL', 'PENDING', 'WON', 'LOST'] as StatusFilter[]).map((f) => (
+          {(['ALL', 'PENDING', 'WON', 'LOST', 'VOID'] as StatusFilter[]).map((f) => (
             <button key={f} onClick={() => setFilter(f)} className={cn('px-3 py-1 rounded-lg text-xs font-semibold transition-all', filter === f ? 'bg-[#0066FF] text-white' : 'text-[#4D6B9A] hover:text-[#E6F1FF]')}>
               {f === 'ALL' ? 'All' : f}
             </button>
           ))}
         </div>
         <div className="flex gap-1.5 bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl p-1">
-          {([['ALL','All'],['VIRTUAL_FOOTBALL','Football'],['DICE','Dice'],['HORSE_RACING','Racing']] as [string, string][]).map(([g, label]) => (
+          {([['ALL','All Virtual'],['VIRTUAL_FOOTBALL','Football'],['DICE','Dice'],['HORSE_RACING','Racing'],['SPORTS','Sports']] as [string, string][]).map(([g, label]) => (
             <button key={g} onClick={() => setGameFilter(g)} className={cn('px-3 py-1 rounded-lg text-xs font-semibold transition-all', gameFilter === g ? 'bg-[#0066FF] text-white' : 'text-[#4D6B9A] hover:text-[#E6F1FF]')}>
               {label}
             </button>
@@ -124,9 +158,15 @@ export default function BetsPage() {
           <Receipt size={36} className="text-[#1A2B4A]" />
           <p className="text-[#4D6B9A] text-sm">No bets found</p>
         </div>
+      ) : isSports ? (
+        <div className="space-y-2">
+          {(visible as SportBet[]).map((bet) => (
+            <SportBetRow key={bet.id} bet={bet} onVoid={() => setVoiding(bet)} />
+          ))}
+        </div>
       ) : (
         <div className="space-y-2">
-          {visible.map((bet) => {
+          {(visible as VirtualBet[]).map((bet) => {
             const game = GAME_CFG[bet.gameType]
             const GameIcon = game.icon
             return (
@@ -156,6 +196,124 @@ export default function BetsPage() {
           })}
         </div>
       )}
+
+      {voiding && (
+        <VoidModal
+          bet={voiding}
+          onCancel={() => setVoiding(null)}
+          onDone={() => { setVoiding(null); load(true) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function SportBetRow({ bet, onVoid }: { bet: SportBet; onVoid: () => void }) {
+  return (
+    <div className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-bold text-[#E6F1FF]">@{bet.user.username}</span>
+            <span className="text-[10px] text-[#4D6B9A]">·</span>
+            <span className="text-xs text-[#4D6B9A]">{bet.selections.length === 1 ? 'Single' : `${bet.selections.length}-fold`}</span>
+            <span className="text-[10px] font-bold text-[#0066FF]">@{Number(bet.totalOdds).toFixed(2)}</span>
+          </div>
+          <p className="text-[10px] text-[#4D6B9A]">{formatTime(bet.createdAt)} · <span className="font-mono">{bet.id.slice(0, 8)}</span></p>
+        </div>
+        <div className="text-right shrink-0 min-w-[90px]">
+          <p className="text-xs font-mono font-bold text-[#E6F1FF]">{formatNaira(bet.stakeKobo)}</p>
+          {bet.status === 'WON' && <p className="text-[10px] font-mono text-[#00C48C]">+{formatNaira(bet.actualWinKobo)}</p>}
+          {bet.status === 'PENDING' && <p className="text-[10px] font-mono text-[#4D6B9A]">to win {formatNaira(bet.potentialWinKobo)}</p>}
+          {bet.status === 'VOID' && <p className="text-[10px] text-[#4D6B9A]">refunded</p>}
+        </div>
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0', STATUS_CFG[bet.status])}>
+          {bet.status}
+        </span>
+        {bet.status === 'PENDING' && (
+          <button
+            onClick={onVoid}
+            title="Void bet and refund stake"
+            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded-lg border border-[#1A2B4A] text-[10px] font-semibold text-[#4D6B9A] hover:text-[#EF4444] hover:border-[#EF4444]/40 transition-all"
+          >
+            <Ban size={11} /> Void
+          </button>
+        )}
+      </div>
+      <div className="mt-2 pt-2 border-t border-[#1A2B4A] space-y-1">
+        {bet.selections.map((sel) => (
+          <div key={sel.id} className="flex items-center gap-2 text-[11px]">
+            <span className="flex-1 min-w-0 truncate text-[#E6F1FF]">
+              {sel.homeTeam && sel.awayTeam
+                ? `${sel.homeTeam} vs ${sel.awayTeam}`
+                : <span className="font-mono text-[#4D6B9A]">{sel.fixtureId}</span>}
+              {sel.homeScore != null && sel.awayScore != null && (
+                <span className="ml-1.5 font-mono text-[#4D6B9A]">{sel.homeScore}–{sel.awayScore}</span>
+              )}
+            </span>
+            <span className="text-[#4D6B9A] shrink-0">{PICK_LABELS[sel.pick] ?? sel.pick}</span>
+            <span className="font-bold text-[#0066FF] shrink-0">@{Number(sel.oddsDecimal).toFixed(2)}</span>
+            <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0', STATUS_CFG[sel.result])}>{sel.result}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function VoidModal({ bet, onCancel, onDone }: { bet: SportBet; onCancel: () => void; onDone: () => void }) {
+  const [reason, setReason] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const confirm = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      await adminApi.post(`/admin/bets/sport/${bet.id}/void`, { reason: reason.trim() || undefined })
+      onDone()
+    } catch (err) {
+      setError(getApiError(err, 'Could not void bet'))
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative w-full max-w-md bg-[#0F1B3D] border border-[#1A2B4A] rounded-2xl p-6 shadow-2xl">
+        <h3 className="text-base font-bold text-[#E6F1FF] mb-1">Void bet</h3>
+        <p className="text-sm text-[#4D6B9A] mb-5">
+          Refunds {formatNaira(bet.stakeKobo)} to @{bet.user.username} and voids all pending selections. This can&apos;t be undone.
+        </p>
+        {error && (
+          <div className="flex items-center gap-2 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl px-3 py-2 mb-4 text-sm text-[#EF4444]">
+            <AlertCircle size={15} />{error}
+          </div>
+        )}
+        <div className="flex flex-col gap-1.5 mb-5">
+          <label className="text-xs font-semibold text-[#4D6B9A] uppercase tracking-wider">Reason (optional)</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            placeholder="Fixture postponed, odds error…"
+            className="w-full bg-[#081226] border border-[#1A2B4A] rounded-xl px-3 py-2.5 text-sm text-[#E6F1FF] placeholder-[#2A4070] focus:outline-none focus:border-[#0066FF] transition-all resize-none"
+          />
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 h-10 border border-[#1A2B4A] text-[#4D6B9A] font-semibold rounded-xl hover:bg-[#0F1B3D] transition-all text-sm">
+            Cancel
+          </button>
+          <button
+            onClick={confirm}
+            disabled={loading}
+            className="flex-1 h-10 bg-[#EF4444] text-white font-semibold rounded-xl hover:bg-[#DC2626] disabled:opacity-50 transition-all text-sm"
+          >
+            {loading ? 'Voiding…' : 'Void & refund'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -46,7 +46,7 @@ function poissonPmf(lambda: number, k: number): number {
   return Math.exp(logP)
 }
 
-interface MatchOdds {
+export interface MatchOdds {
   '1x2': { '1': number; X: number; '2': number }
   btts: { yes: number; no: number }
   over_under: { over: number; under: number }
@@ -492,7 +492,7 @@ export class FootballService implements OnModuleInit {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   private formatRound(
-    r: { id: string; league: VirtualLeague; cycleAt: Date; status: RoundStatus; rngSeedHash: string; homeTeamId: number; awayTeamId: number; homeTeam: { id: number; name: string }; awayTeam: { id: number; name: string } },
+    r: { id: string; league: `${VirtualLeague}`; cycleAt: Date; status: `${RoundStatus}`; rngSeedHash: string; homeTeamId: number; awayTeamId: number; homeTeam: { id: number; name: string }; awayTeam: { id: number; name: string } },
     odds: MatchOdds,
   ) {
     return {

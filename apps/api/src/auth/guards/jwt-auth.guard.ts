@@ -62,7 +62,7 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // Attach to request for @CurrentUser() decorator
-    ;(request as Record<string, unknown>)['user'] = { ...user, jti: payload.jti }
+    ;(request as unknown as Record<string, unknown>)['user'] = { ...user, jti: payload.jti }
     return true
   }
 

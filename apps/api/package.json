@@ -13,29 +13,29 @@
     "admin:create": "ts-node src/scripts/create-admin.ts"
   },
   "dependencies": {
+    "@nestjs/bullmq": "^11.0.0",
     "@nestjs/common": "^11.0.0",
+    "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.0",
+    "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
     "@nestjs/platform-socket.io": "^11.0.0",
-    "@nestjs/websockets": "^11.0.0",
-    "@nestjs/jwt": "^11.0.0",
-    "@nestjs/config": "^4.0.0",
-    "@nestjs/throttler": "^6.4.0",
     "@nestjs/schedule": "^5.0.0",
-    "bullmq": "^5.0.0",
-    "@nestjs/bullmq": "^11.0.0",
-    "ioredis": "^5.4.0",
-    "socket.io": "^4.8.0",
-    "class-validator": "^0.14.0",
-    "class-transformer": "^0.5.0",
+    "@nestjs/throttler": "^6.4.0",
+    "@nestjs/websockets": "^11.0.0",
+    "@qiro/db": "workspace:*",
+    "@qiro/game-engine": "workspace:*",
+    "@qiro/types": "workspace:*",
     "axios": "^1.7.0",
     "bcrypt": "^5.1.0",
+    "bullmq": "^5.0.0",
+    "class-transformer": "^0.5.0",
+    "class-validator": "^0.14.0",
     "cookie-parser": "^1.4.7",
+    "ioredis": "^5.4.0",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.0",
-    "@qiro/types": "workspace:*",
-    "@qiro/db": "workspace:*",
-    "@qiro/game-engine": "workspace:*"
+    "socket.io": "^4.8.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
@@ -44,17 +44,26 @@
     "@types/bcrypt": "^5.0.0",
     "@types/cookie-parser": "^1.4.7",
     "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.0.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.7.3"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "**/*.(t|j)s"
+    ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

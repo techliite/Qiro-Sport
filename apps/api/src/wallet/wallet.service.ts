@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common'
-import { prisma } from '@qiro/db'
+import { prisma, Prisma } from '@qiro/db'
 import { TransactionType } from '@qiro/types'
 import { randomUUID } from 'node:crypto'
 
@@ -46,34 +46,7 @@ export class WalletService {
     ref: string,
     metadata?: Record<string, unknown>,
   ) {
-    return prisma.$transaction(async (tx) => {
-      // Lock the wallet row to prevent concurrent mutations
-      const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
-        SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
-      `
-      if (!wallet[0]) throw new BadRequestException('Wallet not found')
-
-      const currentBalance = Number(wallet[0].balance_kobo)
-      const newBalance = currentBalance + amountKobo
-
-      await tx.wallet.update({
-        where: { userId },
-        data: { balanceKobo: BigInt(newBalance) },
-      })
-
-      await tx.transaction.create({
-        data: {
-          walletId: wallet[0].id,
-          type,
-          amountKobo: BigInt(amountKobo),
-          runningBalanceKobo: BigInt(newBalance),
-          ref,
-          metadata: metadata ?? {},
-        },
-      })
-
-      return { newBalanceKobo: newBalance }
-    })
+    return prisma.$transaction((tx) => this.creditInTx(tx, userId, amountKobo, type, ref, metadata))
   }
 
   /**
@@ -87,37 +60,84 @@ export class WalletService {
     ref: string,
     metadata?: Record<string, unknown>,
   ) {
-    return prisma.$transaction(async (tx) => {
-      const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
-        SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
-      `
-      if (!wallet[0]) throw new BadRequestException('Wallet not found')
+    return prisma.$transaction((tx) => this.debitInTx(tx, userId, amountKobo, type, ref, metadata))
+  }
 
-      const currentBalance = Number(wallet[0].balance_kobo)
-      if (currentBalance < amountKobo) {
-        throw new BadRequestException('Insufficient balance')
-      }
+  /** Credit inside a caller's transaction, so the wallet change commits or rolls back with it. */
+  async creditInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amountKobo: number,
+    type: TransactionType,
+    ref: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    // Lock the wallet row to prevent concurrent mutations
+    const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
+      SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
+    `
+    if (!wallet[0]) throw new BadRequestException('Wallet not found')
 
-      const newBalance = currentBalance - amountKobo
+    const currentBalance = Number(wallet[0].balance_kobo)
+    const newBalance = currentBalance + amountKobo
 
-      await tx.wallet.update({
-        where: { userId },
-        data: { balanceKobo: BigInt(newBalance) },
-      })
-
-      await tx.transaction.create({
-        data: {
-          walletId: wallet[0].id,
-          type,
-          amountKobo: BigInt(amountKobo),
-          runningBalanceKobo: BigInt(newBalance),
-          ref: ref || randomUUID(),
-          metadata: metadata ?? {},
-        },
-      })
-
-      return { newBalanceKobo: newBalance }
+    await tx.wallet.update({
+      where: { userId },
+      data: { balanceKobo: BigInt(newBalance) },
     })
+
+    await tx.transaction.create({
+      data: {
+        walletId: wallet[0].id,
+        type,
+        amountKobo: BigInt(amountKobo),
+        runningBalanceKobo: BigInt(newBalance),
+        ref,
+        metadata: (metadata ?? {}) as Prisma.InputJsonObject,
+      },
+    })
+
+    return { newBalanceKobo: newBalance }
+  }
+
+  /** Debit inside a caller's transaction, so the wallet change commits or rolls back with it. */
+  async debitInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    amountKobo: number,
+    type: TransactionType,
+    ref: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
+      SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
+    `
+    if (!wallet[0]) throw new BadRequestException('Wallet not found')
+
+    const currentBalance = Number(wallet[0].balance_kobo)
+    if (currentBalance < amountKobo) {
+      throw new BadRequestException('Insufficient balance')
+    }
+
+    const newBalance = currentBalance - amountKobo
+
+    await tx.wallet.update({
+      where: { userId },
+      data: { balanceKobo: BigInt(newBalance) },
+    })
+
+    await tx.transaction.create({
+      data: {
+        walletId: wallet[0].id,
+        type,
+        amountKobo: BigInt(amountKobo),
+        runningBalanceKobo: BigInt(newBalance),
+        ref: ref || randomUUID(),
+        metadata: (metadata ?? {}) as Prisma.InputJsonObject,
+      },
+    })
+
+    return { newBalanceKobo: newBalance }
   }
 
   async getTransactions(userId: string, page = 1, limit = 20) {

@@ -1,5 +1,6 @@
-import { Controller, Get, Patch, Body, Query, Param, UseGuards } from '@nestjs/common'
+import { Controller, Get, Patch, Post, Body, Query, Param, UseGuards, HttpCode, HttpStatus } from '@nestjs/common'
 import { AdminService } from './admin.service'
+import { SportsSettlementService } from '../sports/sports-settlement.service'
 import { Public } from '../auth/decorators/public.decorator'
 import { AdminIpGuard } from './auth/admin-ip.guard'
 import { AdminJwtGuard } from './auth/admin-jwt.guard'
@@ -10,7 +11,10 @@ import { CurrentAdmin, type AuthAdmin } from './auth/current-admin.decorator'
 @UseGuards(AdminIpGuard, AdminJwtGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly sportsSettlement: SportsSettlementService,
+  ) {}
 
   @Get('users')
   searchUsers(@Query('q') query: string) {
@@ -49,6 +53,17 @@ export class AdminController {
   @Get('bets/sport')
   getSportBets(@Query('status') status?: string) {
     return this.adminService.getSportBets(status)
+  }
+
+  // Refunds the full stake — for postponed fixtures, palpable odds errors, or suspected fraud
+  @Post('bets/sport/:id/void')
+  @HttpCode(HttpStatus.OK)
+  voidSportBet(
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+    @CurrentAdmin() admin: AuthAdmin,
+  ) {
+    return this.sportsSettlement.voidBet(id, admin.id, body?.reason)
   }
 
   @Get('bets/virtual')

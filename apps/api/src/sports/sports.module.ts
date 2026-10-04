@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common'
-import { HttpModule } from '@nestjs/axios'
 import { SportsController } from './sports.controller'
 import { SportsService } from './sports.service'
+import { SportsSettlementService } from './sports-settlement.service'
 import { WalletModule } from '../wallet/wallet.module'
+import { GameConfigModule } from '../config/game-config.module'
+import { GatewayModule } from '../gateway/gateway.module'
 
 @Module({
-  imports: [HttpModule, WalletModule],
+  imports: [WalletModule, GameConfigModule, GatewayModule],
   controllers: [SportsController],
-  providers: [SportsService],
-  exports: [SportsService],
+  providers: [SportsService, SportsSettlementService],
+  exports: [SportsService, SportsSettlementService],
 })
 export class SportsModule {}

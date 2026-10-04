@@ -2,3 +2,34 @@
 @import "@qiro/ui/globals.css";
 
 /* Google Fonts — loaded via next/font in layout.tsx for performance */
+
+/* ── Lobby highlight reel ─────────────────────────────────────────────────── */
+@keyframes reel-progress {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes reel-shine {
+  0%        { transform: translateX(0); }
+  45%, 100% { transform: translateX(220%); }
+}
+
+/* Light sweep — moves a pre-rendered gradient layer (transform only, no repaint) */
+.reel-shine {
+  overflow: hidden;
+}
+.reel-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -120%;
+  width: 100%;
+  background: linear-gradient(105deg, transparent 20%, rgba(230, 241, 255, 0.08) 50%, transparent 80%);
+  animation: reel-shine 5.5s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reel-shine::after { animation: none; display: none; }
+}

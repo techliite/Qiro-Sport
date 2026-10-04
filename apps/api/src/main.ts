@@ -5,6 +5,12 @@ import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import { AppModule } from './app.module'
 
+// Prisma returns kobo amounts as BigInt, which JSON.stringify rejects ("Do not know how to
+// serialize a BigInt") — any response containing a raw row would 500. Strings keep full precision.
+;(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString()
+}
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true })
 
