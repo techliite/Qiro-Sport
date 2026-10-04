@@ -15,6 +15,7 @@ import { WalletService } from '../wallet/wallet.service'
 import { RegisterDto } from './dto/register.dto'
 import { LoginDto } from './dto/login.dto'
 import { VerifyOtpDto } from './dto/verify-otp.dto'
+import { normalizeNgPhone } from './phone'
 
 const BCRYPT_ROUNDS = 12
 const OTP_TTL = 300           // 5 minutes
@@ -114,7 +115,10 @@ export class AuthService {
     return this.generateTokens(user.id, user.phone, user.username)
   }
 
-  async resendOtp(phone: string) {
+  async resendOtp(rawPhone: string) {
+    // Called with a raw body value (no DTO), so normalise here too
+    const phone = normalizeNgPhone(rawPhone)
+    if (typeof phone !== 'string') throw new BadRequestException('Phone number is required')
     const user = await prisma.user.findUnique({ where: { phone }, select: { phone: true } })
     if (!user) throw new BadRequestException('Phone number not registered')
 

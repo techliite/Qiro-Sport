@@ -1,7 +1,8 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
 
 export const api = axios.create({
-  baseURL: process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000/api/v1',
+  // Same-origin by default — next.config.ts proxies /api/v1 to the API (see API_PROXY_TARGET)
+  baseURL: process.env['NEXT_PUBLIC_API_URL'] || '/api/v1',
   withCredentials: true, // sends httpOnly refresh cookie
 })
 

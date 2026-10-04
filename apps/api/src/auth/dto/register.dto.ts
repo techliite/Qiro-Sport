@@ -1,6 +1,9 @@
+import { Transform } from 'class-transformer'
 import { IsString, IsPhoneNumber, MinLength, MaxLength, Matches, IsDateString } from 'class-validator'
+import { normalizeNgPhone } from '../phone'
 
 export class RegisterDto {
+  @Transform(({ value }) => normalizeNgPhone(value))
   @IsPhoneNumber('NG')
   phone!: string
 

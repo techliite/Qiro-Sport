@@ -13,7 +13,8 @@ import { useAuthStore } from '@/store/auth.store'
 import { useWalletStore } from '@/store/wallet.store'
 
 const schema = z.object({
-  phone: z.string().min(10, 'Enter your phone number').regex(/^\+?234[0-9]{10}$|^0[7-9][0-1][0-9]{8}$/, 'Enter a valid Nigerian phone number'),
+  // Spaces/dashes allowed while typing; the API stores every number as +234XXXXXXXXXX
+  phone: z.string().transform((v) => v.replace(/[\s\-()]/g, '')).pipe(z.string().regex(/^\+?234[0-9]{10}$|^0[7-9][0-1][0-9]{8}$/, 'Enter a valid Nigerian number, e.g. 0805 947 2483')),
   password: z.string().min(1, 'Password is required'),
 })
 type FormData = z.infer<typeof schema>

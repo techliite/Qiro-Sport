@@ -14,7 +14,8 @@ import { useWalletStore } from '@/store/wallet.store'
 // ─── Schemas ────────────────────────────────────────────────────────────────
 
 const step1Schema = z.object({
-  phone: z.string().regex(/^\+?234[0-9]{10}$|^0[7-9][0-1][0-9]{8}$/, 'Enter a valid Nigerian number'),
+  // Spaces/dashes allowed while typing; the API stores every number as +234XXXXXXXXXX
+  phone: z.string().transform((v) => v.replace(/[\s\-()]/g, '')).pipe(z.string().regex(/^\+?234[0-9]{10}$|^0[7-9][0-1][0-9]{8}$/, 'Enter a valid Nigerian number, e.g. 0805 947 2483')),
   username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/, 'Letters, numbers, underscores only'),
   dob: z.string().refine((d) => {
     const date = new Date(d)
