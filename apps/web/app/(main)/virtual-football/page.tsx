@@ -681,7 +681,6 @@ export default function VirtualFootballPage() {
             </button>
           </div>
 
-
           {/* Backdrop — z-[55] sits above nav (z-50) but below sheet */}
           {slipOpen && (
             <div
