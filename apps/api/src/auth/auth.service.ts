@@ -52,21 +52,37 @@ export class AuthService {
     const age = Math.floor(ageMs / (365.25 * 24 * 3600 * 1000))
     if (age < 18) throw new BadRequestException('You must be 18 or older to register')
 
-    const existing = await prisma.user.findFirst({
-      where: { OR: [{ phone: dto.phone }, { username: dto.username }] },
-      select: { phone: true, username: true },
-    })
-    if (existing?.phone === dto.phone) throw new BadRequestException('Phone number already registered')
-    if (existing?.username === dto.username) throw new BadRequestException('Username already taken')
+    const [byPhone, byUsername] = await Promise.all([
+      prisma.user.findUnique({ where: { phone: dto.phone }, select: { id: true, phoneVerified: true } }),
+      prisma.user.findUnique({ where: { username: dto.username }, select: { id: true } }),
+    ])
+    if (byPhone?.phoneVerified) throw new BadRequestException('Phone number already registered')
+    if (byUsername && byUsername.id !== byPhone?.id) throw new BadRequestException('Username already taken')
 
     const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS)
 
+    if (byPhone) {
+      // Registered before but never verified (e.g. the OTP SMS failed) — let them start over
+      // with fresh details instead of being locked out. Resend limits still apply.
+      await prisma.user.update({
+        where: { id: byPhone.id },
+        data: { username: dto.username, passwordHash, dob },
+      })
+      await prisma.wallet.upsert({
+        where: { userId: byPhone.id },
+        create: { userId: byPhone.id, balanceKobo: 0n },
+        update: {},
+      })
+      await this.resendOtp(dto.phone)
+      return { message: 'Enter the OTP sent to your number.', phone: dto.phone }
+    }
+
+    // User and wallet commit together — no account without a wallet
     const user = await prisma.user.create({
-      data: { phone: dto.phone, username: dto.username, passwordHash, dob },
+      data: { phone: dto.phone, username: dto.username, passwordHash, dob, wallet: { create: { balanceKobo: 0n } } },
       select: { id: true, phone: true },
     })
 
-    await this.walletService.createWallet(user.id)
     await this.sendOtp(dto.phone)
 
     return { message: 'Account created. Enter the OTP sent to your number.', phone: user.phone }

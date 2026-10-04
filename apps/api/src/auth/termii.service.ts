@@ -6,9 +6,23 @@ export class TermiiService {
   private readonly logger = new Logger(TermiiService.name)
   private readonly base = 'https://api.ng.termii.com/api'
 
-  constructor(private readonly config: ConfigService) {}
+  // Temporary stand-in while Termii isn't set up: codes go to the server log instead of SMS.
+  // Anyone who can read the logs can sign in as any user — turn it off before real users arrive.
+  private readonly logOnly: boolean
+
+  constructor(private readonly config: ConfigService) {
+    this.logOnly = this.config.get<string>('OTP_LOG_ONLY') === 'true'
+    if (this.logOnly) {
+      this.logger.warn('OTP_LOG_ONLY is on — OTP codes are written to the log and NOT sent by SMS')
+    }
+  }
 
   async sendOtp(phone: string, otp: string): Promise<void> {
+    if (this.logOnly) {
+      this.logger.warn(`[OTP_LOG_ONLY] OTP for ${phone}: ${otp}`)
+      return
+    }
+
     const apiKey = this.config.getOrThrow<string>('TERMII_API_KEY')
     const senderId = this.config.get<string>('TERMII_SENDER_ID', 'QiroSport')
 
