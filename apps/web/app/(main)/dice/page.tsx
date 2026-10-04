@@ -204,7 +204,13 @@ export default function DicePage() {
     } catch (err: unknown) {
       clearInterval(spin)
       setDisplayNumber(null)
-      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Roll failed. Try again.')
+      const e = err as { response?: { data?: { message?: string | string[] } } }
+      const message = e.response?.data?.message
+      setError(
+        !e.response
+          ? "Can't reach the game server. Check your connection and try again."
+          : (Array.isArray(message) ? message[0] : message) ?? 'Roll failed. Try again.',
+      )
     } finally {
       setRolling(false)
     }
