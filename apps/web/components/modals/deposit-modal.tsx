@@ -3,14 +3,9 @@
 import { useState } from 'react'
 import { X, Zap } from 'lucide-react'
 import { useAuthStore } from '@/store/auth.store'
-import { api } from '@/lib/api'
+import { depositWithPaystack } from '@/lib/paystack'
 
 const PRESETS = [500_00, 1000_00, 2000_00, 5000_00] // kobo
-
-interface DepositResponse {
-  authorizationUrl: string
-  reference: string
-}
 
 interface Props {
   open: boolean
@@ -35,33 +30,13 @@ export function DepositModal({ open, onClose, onSuccess }: Props) {
     setLoading(true)
 
     try {
-      const res = await api.post<DepositResponse>('/payments/deposit/initiate', {
-        amountKobo: amount,
-        email: `${user.phone}@qiro.app`,
-      })
-
-      // Open Paystack popup
-      const PaystackPop = (window as Window & { PaystackPop?: { setup: (opts: unknown) => { openIframe: () => void } } }).PaystackPop
-      if (!PaystackPop) {
-        window.open(res.data.authorizationUrl, '_blank')
-        return
+      const result = await depositWithPaystack(amount)
+      if (result.status === 'success') {
+        onClose()
+        onSuccess()
       }
-
-      const handler = PaystackPop.setup({
-        key: process.env['NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY'],
-        email: `${user.phone}@qiro.app`,
-        amount,
-        ref: res.data.reference,
-        currency: 'NGN',
-        onClose: () => { /* User cancelled */ },
-        callback: () => {
-          onClose()
-          setTimeout(onSuccess, 2000) // Give webhook time to process
-        },
-      })
-      handler.openIframe()
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to initiate deposit')
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? (err as Error)?.message ?? 'Failed to initiate deposit')
     } finally {
       setLoading(false)
     }

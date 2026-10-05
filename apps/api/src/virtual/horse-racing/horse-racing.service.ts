@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, OnModuleInit, Logger } from '@nestjs/c
 import { Interval } from '@nestjs/schedule'
 import { prisma } from '@qiro/db'
 import { RoundStatus, BetStatus, TransactionType, WsEvent, GameType } from '@qiro/types'
-import { createHash, randomBytes } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { WalletService } from '../../wallet/wallet.service'
 import { QiroGateway } from '../../gateway/qiro.gateway'
 
@@ -202,16 +202,23 @@ export class HorseRacingService implements OnModuleInit {
         ? Math.min(Math.floor(Number(bet.stakeKobo) * Number(bet.oddsDecimal)), MAX_WIN_KOBO)
         : 0
 
-      await prisma.virtualBet.update({
-        where: { id: bet.id },
-        data: { status: won ? BetStatus.WON : BetStatus.LOST, payoutKobo: BigInt(payoutKobo) },
-      })
-
-      if (won && payoutKobo > 0) {
-        const { newBalanceKobo } = await this.walletService.credit(
-          bet.userId, payoutKobo, TransactionType.WIN,
+      // Status change and payout commit together; the guarded update makes a re-run a no-op
+      const settled = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.virtualBet.updateMany({
+          where: { id: bet.id, status: BetStatus.PENDING },
+          data: { status: won ? BetStatus.WON : BetStatus.LOST, payoutKobo: BigInt(payoutKobo) },
+        })
+        if (claimed.count === 0) return null
+        if (!won || payoutKobo === 0) return { newBalanceKobo: undefined }
+        return this.walletService.creditInTx(
+          tx, bet.userId, payoutKobo, TransactionType.WIN,
           `hr:win:${bet.id}`, { betId: bet.id, raceId: race.id, horseId: betHorseId },
         )
+      })
+      if (!settled) continue
+
+      if (won && payoutKobo > 0) {
+        const newBalanceKobo = settled.newBalanceKobo
         this.gateway.emitToUser(bet.userId, WsEvent.USER_BET_SETTLED, { betId: bet.id, won: true, payoutKobo })
         this.gateway.emitToUser(bet.userId, WsEvent.USER_BALANCE, { balanceKobo: newBalanceKobo })
       } else {
@@ -241,10 +248,11 @@ export class HorseRacingService implements OnModuleInit {
   // ── Bet placement ─────────────────────────────────────────────────────────
 
   async placeBet(data: { userId: string; roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number }) {
-    if (data.stakeKobo < MIN_STAKE_KOBO) throw new BadRequestException(`Min stake ₦${MIN_STAKE_KOBO / 100}`)
+    if (!Number.isInteger(data.stakeKobo) || data.stakeKobo < MIN_STAKE_KOBO) throw new BadRequestException(`Min stake ₦${MIN_STAKE_KOBO / 100}`)
     if (data.stakeKobo > MAX_STAKE_KOBO) throw new BadRequestException(`Max stake ₦${MAX_STAKE_KOBO / 100}`)
 
-    const race = await prisma.horseRaceRound.findUniqueOrThrow({ where: { id: data.roundId } })
+    const race = await prisma.horseRaceRound.findUnique({ where: { id: data.roundId } })
+    if (!race) throw new BadRequestException('Race not found')
     if (race.status !== RoundStatus.BETTING_OPEN) throw new BadRequestException('Betting is closed for this race')
 
     const msToRace = new Date(race.cycleAt).getTime() - Date.now()
@@ -260,23 +268,26 @@ export class HorseRacingService implements OnModuleInit {
     if (!horseOdds) throw new BadRequestException('Odds not found')
 
     const oddsDecimal = data.market === 'win' ? horseOdds.winOdds : horseOdds.placeOdds
-    const ref = `hr:stake:${data.userId}:${data.roundId}:${data.horseId}:${data.market}`
+    // Unique per bet — the old user:race:horse:market ref made a second bet on the same horse crash
+    const ref = `hr:stake:${randomUUID()}`
 
-    await this.walletService.debit(data.userId, data.stakeKobo, TransactionType.STAKE, ref, {
-      raceId: data.roundId, horseId: data.horseId, market: data.market,
-    })
-
-    return prisma.virtualBet.create({
-      data: {
-        userId: data.userId,
-        gameType: GameType.HORSE_RACING,
-        roundId: data.roundId,
-        market: data.market,
-        pick: String(data.horseId), // horseId stored as pick; market = 'win' | 'place'
-        oddsDecimal,
-        stakeKobo: BigInt(data.stakeKobo),
-        status: BetStatus.PENDING,
-      },
+    // Debit and bet creation commit together — a failed insert must not lose the stake
+    return prisma.$transaction(async (tx) => {
+      await this.walletService.debitInTx(tx, data.userId, data.stakeKobo, TransactionType.STAKE, ref, {
+        raceId: data.roundId, horseId: data.horseId, market: data.market,
+      })
+      return tx.virtualBet.create({
+        data: {
+          userId: data.userId,
+          gameType: GameType.HORSE_RACING,
+          roundId: data.roundId,
+          market: data.market,
+          pick: String(data.horseId), // horseId stored as pick; market = 'win' | 'place'
+          oddsDecimal,
+          stakeKobo: BigInt(data.stakeKobo),
+          status: BetStatus.PENDING,
+        },
+      })
     })
   }
 

@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { HorseRacingService } from './horse-racing.service'
+import { HorseBetBody } from '../bet-bodies.dto'
 import { CurrentUser, type AuthUser } from '../../auth/decorators/current-user.decorator'
 
 @Controller('virtual/horse-racing')
@@ -24,7 +25,7 @@ export class HorseRacingController {
   @Post('bet')
   placeBet(
     @CurrentUser() user: AuthUser,
-    @Body() body: { roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number },
+    @Body() body: HorseBetBody,
   ) {
     return this.hrService.placeBet({ userId: user.id, ...body })
   }

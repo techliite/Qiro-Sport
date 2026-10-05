@@ -9,6 +9,7 @@ import {
 import { prisma } from '@qiro/db'
 import { TransactionType, GameType, DiceRollDto } from '@qiro/types'
 import { WalletService } from '../../wallet/wallet.service'
+import { GameConfigService } from '../../config/game-config.service'
 import { randomUUID } from 'node:crypto'
 
 const MIN_THRESHOLD = 2
@@ -16,50 +17,60 @@ const MAX_THRESHOLD = 98
 
 @Injectable()
 export class DiceService {
-  constructor(private readonly walletService: WalletService) {}
+  constructor(
+    private readonly walletService: WalletService,
+    private readonly gameConfig: GameConfigService,
+  ) {}
 
   async roll(userId: string, dto: DiceRollDto) {
     if (dto.threshold < MIN_THRESHOLD || dto.threshold > MAX_THRESHOLD) {
       throw new BadRequestException(`Threshold must be between ${MIN_THRESHOLD} and ${MAX_THRESHOLD}`)
     }
 
-    // TODO Phase 2: read min/max stake from GameConfigService
-    if (dto.stakeKobo <= 0) throw new BadRequestException('Invalid stake amount')
+    const [minStake, maxStake] = await Promise.all([
+      this.gameConfig.getNumber('DICE', 'min_stake_kobo', 10_000),
+      this.gameConfig.getNumber('DICE', 'max_stake_kobo', 5_000_000),
+    ])
+    if (!Number.isInteger(dto.stakeKobo) || dto.stakeKobo < minStake) {
+      throw new BadRequestException(`Minimum stake is ₦${minStake / 100}`)
+    }
+    if (dto.stakeKobo > maxStake) throw new BadRequestException(`Maximum stake is ₦${maxStake / 100}`)
 
     const seed = generateSeed()
     const roundId = randomUUID()
     const seedHash = commitSeedHash(seed, roundId)
 
-    // Debit stake before rolling
-    await this.walletService.debit(userId, dto.stakeKobo, TransactionType.STAKE, roundId)
-
-    // Roll
     const rolledNumber = generateRoll()
     const payout = calculateDicePayout(dto.stakeKobo, dto.threshold, dto.direction, rolledNumber)
     const won = payout > 0
     const multiplier = payoutMultiplier(dto.threshold, dto.direction)
 
-    // Record bet
-    await prisma.virtualBet.create({
-      data: {
-        userId,
-        gameType: GameType.DICE,
-        roundId,
-        market: 'dice',
-        pick: `${dto.direction}:${dto.threshold}`,
-        oddsDecimal: multiplier,
-        stakeKobo: BigInt(dto.stakeKobo),
-        payoutKobo: BigInt(payout),
-        status: won ? 'WON' : 'LOST',
-      },
-    })
-
-    if (won) {
-      await this.walletService.credit(userId, payout, TransactionType.WIN, `win:${roundId}`, {
+    // Stake, bet record and payout commit together — no stake taken without a bet, no win unpaid
+    await prisma.$transaction(async (tx) => {
+      await this.walletService.debitInTx(tx, userId, dto.stakeKobo, TransactionType.STAKE, `dice:stake:${roundId}`, {
         gameType: 'DICE',
         roundId,
       })
-    }
+      await tx.virtualBet.create({
+        data: {
+          userId,
+          gameType: GameType.DICE,
+          roundId,
+          market: 'dice',
+          pick: `${dto.direction}:${dto.threshold}`,
+          oddsDecimal: multiplier,
+          stakeKobo: BigInt(dto.stakeKobo),
+          payoutKobo: BigInt(payout),
+          status: won ? 'WON' : 'LOST',
+        },
+      })
+      if (won) {
+        await this.walletService.creditInTx(tx, userId, payout, TransactionType.WIN, `dice:win:${roundId}`, {
+          gameType: 'DICE',
+          roundId,
+        })
+      }
+    })
 
     return {
       rolledNumber,

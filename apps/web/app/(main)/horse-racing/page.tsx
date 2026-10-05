@@ -43,30 +43,6 @@ interface Selection {
   odds: number
 }
 
-const MOCK_RACE: Race = {
-  id: 'mock-race-1',
-  raceNumber: 42,
-  status: 'BETTING_OPEN',
-  cycleAt: new Date(Date.now() + 2.5 * 60 * 1000).toISOString(),
-  seedHash: 'a3f8e2d1c7b94506a3f8e2d1c7b94506a3f8e2d1c7b94506a3f8e2d1c7b94506',
-  horses: [
-    { id: 1, name: 'Thunder Bolt',  jockey: 'J. Okafor',  form: [1,2,1,3,2], currentRating: 88, winOdds: 2.40, placeOdds: 1.15 },
-    { id: 4, name: 'Abuja Pride',   jockey: 'K. Mohammed', form: [1,3,4,2,1], currentRating: 83, winOdds: 3.10, placeOdds: 1.35 },
-    { id: 7, name: 'Eagle Eye',     jockey: 'S. Hassan',  form: [3,1,2,1,2], currentRating: 84, winOdds: 2.85, placeOdds: 1.25 },
-    { id: 2, name: 'Royal Flash',   jockey: 'A. Ibrahim', form: [2,1,3,2,1], currentRating: 85, winOdds: 2.70, placeOdds: 1.20 },
-    { id: 6, name: 'Delta Storm',   jockey: 'F. Peters',  form: [2,5,1,4,3], currentRating: 79, winOdds: 5.50, placeOdds: 2.10 },
-    { id: 3, name: 'Lagos Speed',   jockey: 'T. Adeyemi', form: [3,4,2,1,3], currentRating: 80, winOdds: 4.80, placeOdds: 1.90 },
-    { id: 5, name: 'Sahara Runner', jockey: 'E. Nwosu',   form: [4,2,3,5,4], currentRating: 78, winOdds: 7.20, placeOdds: 2.50 },
-    { id: 8, name: 'Iron Fist',     jockey: 'D. Chukwu',  form: [5,4,5,3,5], currentRating: 77, winOdds: 9.00, placeOdds: 3.00 },
-  ],
-}
-
-const MOCK_RESULTS: RaceResult[] = [
-  { id: 'r1', raceNumber: 41, cycleAt: new Date(Date.now()-4*60000).toISOString(), finishingOrder:[{id:1,name:'Thunder Bolt'},{id:4,name:'Abuja Pride'},{id:7,name:'Eagle Eye'},{id:2,name:'Royal Flash'}], seed: null },
-  { id: 'r2', raceNumber: 40, cycleAt: new Date(Date.now()-8*60000).toISOString(), finishingOrder:[{id:7,name:'Eagle Eye'},{id:1,name:'Thunder Bolt'},{id:2,name:'Royal Flash'},{id:6,name:'Delta Storm'}], seed: null },
-  { id: 'r3', raceNumber: 39, cycleAt: new Date(Date.now()-12*60000).toISOString(), finishingOrder:[{id:2,name:'Royal Flash'},{id:7,name:'Eagle Eye'},{id:4,name:'Abuja Pride'},{id:3,name:'Lagos Speed'}], seed: null },
-]
-
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? 'http://localhost:4000'
 
 // ─── Countdown ────────────────────────────────────────────────────────────────
@@ -263,11 +239,11 @@ export default function HorseRacingPage() {
         api.get<Race>('/virtual/horse-racing/current'),
         api.get<RaceResult[]>('/virtual/horse-racing/results?limit=6'),
       ])
-      setRace(raceRes.data ?? MOCK_RACE)
-      setResults(resultsRes.data?.length ? resultsRes.data : MOCK_RESULTS)
+      setRace(raceRes.data ?? null)
+      setResults(resultsRes.data ?? [])
     } catch {
-      setRace(MOCK_RACE)
-      setResults(MOCK_RESULTS)
+      setRace(null)
+      setResults([])
     } finally { setLoading(false) }
   }, [])
 

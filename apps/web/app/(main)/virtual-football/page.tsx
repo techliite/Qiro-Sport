@@ -62,38 +62,6 @@ interface UserBet {
 
 // ─── Mock data (shown when API is unreachable) ────────────────────────────────
 
-const MOCK_ROUNDS: Round[] = [
-  {
-    id: 'mock-1',
-    league: 'A',
-    homeTeam: { id: 1, name: 'Madrid FC' },
-    awayTeam: { id: 3, name: 'Paris City' },
-    odds: { '1x2': { '1': 2.10, X: 3.40, '2': 3.20 }, btts: { yes: 1.75, no: 2.05 }, over_under: { over: 1.85, under: 1.95 } },
-    status: 'BETTING_OPEN',
-    cycleAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
-    rngSeedHash: 'demo',
-  },
-  {
-    id: 'mock-2',
-    league: 'B',
-    homeTeam: { id: 9, name: 'Porto Athletic' },
-    awayTeam: { id: 12, name: 'Belgrade SC' },
-    odds: { '1x2': { '1': 2.45, X: 3.20, '2': 2.80 }, btts: { yes: 1.90, no: 1.90 }, over_under: { over: 2.00, under: 1.80 } },
-    status: 'BETTING_OPEN',
-    cycleAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
-    rngSeedHash: 'demo',
-  },
-]
-
-const MOCK_RESULTS: Result[] = [
-  { id: 'r1', league: 'A', homeTeam: { name: 'Bayern SC' }, awayTeam: { name: 'Ajax SC' }, homeScore: 2, awayScore: 1, halfTimeHome: 1, halfTimeAway: 0, cycleAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
-  { id: 'r2', league: 'B', homeTeam: { name: 'Lisbon FC' }, awayTeam: { name: 'Vienna SC' }, homeScore: 0, awayScore: 0, halfTimeHome: 0, halfTimeAway: 0, cycleAt: new Date(Date.now() - 10 * 60 * 1000).toISOString() },
-  { id: 'r3', league: 'A', homeTeam: { name: 'Roma FC' }, awayTeam: { name: 'London United' }, homeScore: 1, awayScore: 3, halfTimeHome: 0, halfTimeAway: 1, cycleAt: new Date(Date.now() - 15 * 60 * 1000).toISOString() },
-  { id: 'r4', league: 'B', homeTeam: { name: 'Bruges City' }, awayTeam: { name: 'Sevilla Utd' }, homeScore: 2, awayScore: 2, halfTimeHome: 1, halfTimeAway: 1, cycleAt: new Date(Date.now() - 20 * 60 * 1000).toISOString() },
-  { id: 'r5', league: 'A', homeTeam: { name: 'Madrid FC' }, awayTeam: { name: 'Bayern SC' }, homeScore: 3, awayScore: 1, halfTimeHome: 2, halfTimeAway: 0, cycleAt: new Date(Date.now() - 25 * 60 * 1000).toISOString() },
-  { id: 'r6', league: 'B', homeTeam: { name: 'Belgrade SC' }, awayTeam: { name: 'Porto Athletic' }, homeScore: 1, awayScore: 2, halfTimeHome: 0, halfTimeAway: 1, cycleAt: new Date(Date.now() - 30 * 60 * 1000).toISOString() },
-]
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatNaira(kobo: number) {
@@ -457,11 +425,11 @@ export default function VirtualFootballPage() {
       ])
       const liveRounds = roundsRes.data ?? []
       const liveResults = resultsRes.data ?? []
-      setRounds(liveRounds.length > 0 ? liveRounds : MOCK_ROUNDS)
-      setResults(liveResults.length > 0 ? liveResults : MOCK_RESULTS)
+      setRounds(liveRounds)
+      setResults(liveResults)
     } catch {
-      setRounds(MOCK_ROUNDS)
-      setResults(MOCK_RESULTS)
+      setRounds([])
+      setResults([])
     } finally {
       setLoading(false)
     }

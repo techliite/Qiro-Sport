@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Search, ShieldOff, ShieldCheck, ShieldAlert, RefreshCw, AlertCircle, Users } from 'lucide-react'
-import { adminApi } from '@/lib/api'
+import { adminApi, getApiError } from '@/lib/api'
 import { cn } from '@qiro/ui'
 
 interface User {
@@ -20,13 +20,6 @@ const STATUS_CFG = {
   SUSPENDED: { label: 'Suspended', color: 'text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/20', icon: ShieldAlert },
   BANNED:    { label: 'Banned',    color: 'text-[#EF4444] bg-[#EF4444]/10 border-[#EF4444]/20', icon: ShieldOff },
 }
-
-const MOCK_USERS: User[] = [
-  { id: '1', username: 'hamid_test',   phone: '08012345678', status: 'ACTIVE',    phoneVerified: true,  createdAt: new Date().toISOString(),                       wallet: { balanceKobo: '250000' } },
-  { id: '2', username: 'jane_doe',     phone: '08098765432', status: 'ACTIVE',    phoneVerified: true,  createdAt: new Date(Date.now() - 86400000).toISOString(),   wallet: { balanceKobo: '1500000' } },
-  { id: '3', username: 'john_test',    phone: '09011223344', status: 'SUSPENDED', phoneVerified: false, createdAt: new Date(Date.now() - 2*86400000).toISOString(), wallet: { balanceKobo: '0' } },
-  { id: '4', username: 'blocked_user', phone: '07055667788', status: 'BANNED',    phoneVerified: true,  createdAt: new Date(Date.now() - 5*86400000).toISOString(), wallet: null },
-]
 
 function formatNaira(kobo: string | number) {
   return '₦' + (Number(kobo) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })
@@ -48,8 +41,8 @@ export default function UsersPage() {
     setLoading(true); setError('')
     try {
       const res = await adminApi.get<User[]>(`/admin/users?q=${encodeURIComponent(q)}`)
-      setUsers(res.data?.length ? res.data : MOCK_USERS)
-    } catch { setUsers(MOCK_USERS) }
+      setUsers(res.data ?? [])
+    } catch (err) { setUsers([]); setError(getApiError(err, 'Could not load users')) }
     finally { setLoading(false) }
   }, [])
 
@@ -68,7 +61,7 @@ export default function UsersPage() {
       await adminApi.patch(`/admin/users/${confirm.user.id}/${ep}`)
       setConfirm(null)
       search(query)
-    } catch { setError('Action failed') }
+    } catch (err) { setError(getApiError(err, 'Action failed')) }
     finally { setActing(false) }
   }
 

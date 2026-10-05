@@ -1,5 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { FootballService } from './football.service'
+import { FootballBetBody } from '../bet-bodies.dto'
 import { CurrentUser, AuthUser } from '../../auth/decorators/current-user.decorator'
 
 @Controller('virtual/football')
@@ -24,7 +25,7 @@ export class FootballController {
   @Post('bet')
   placeBet(
     @CurrentUser() user: AuthUser,
-    @Body() body: { roundId: string; market: string; pick: string; stakeKobo: number },
+    @Body() body: FootballBetBody,
   ) {
     return this.footballService.placeBet({ userId: user.id, ...body })
   }

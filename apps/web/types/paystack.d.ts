@@ -1,26 +1,21 @@
-interface PaystackPopOptions {
-  key: string
-  email: string
-  amount: number
-  ref?: string
-  accessCode?: string
-  currency?: string
-  metadata?: Record<string, unknown>
-  onSuccess: (transaction: { reference: string; status: string }) => void
-  onCancel: () => void
+// Paystack Inline JS v2 — https://paystack.com/docs/developer-tools/inlinejs/
+interface PaystackTransaction {
+  reference: string
+  status?: string
+  message?: string
 }
 
-interface PaystackPopInstance {
-  openIframe(): void
+interface PaystackCallbacks {
+  onSuccess?: (transaction: PaystackTransaction) => void
+  onCancel?: () => void
+  onError?: (error: { message?: string }) => void
 }
 
-interface PaystackPopConstructor {
-  setup(options: PaystackPopOptions): PaystackPopInstance
-  new (): {
-    newTransaction(options: PaystackPopOptions): void
-  }
+interface PaystackPopV2 {
+  // Opens checkout for a transaction the API already initialised (no duplicate reference)
+  resumeTransaction(accessCode: string, callbacks?: PaystackCallbacks): void
 }
 
 interface Window {
-  PaystackPop: PaystackPopConstructor
+  PaystackPop?: new () => PaystackPopV2
 }

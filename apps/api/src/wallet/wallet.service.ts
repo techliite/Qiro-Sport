@@ -72,9 +72,10 @@ export class WalletService {
     ref: string,
     metadata?: Record<string, unknown>,
   ) {
-    // Lock the wallet row to prevent concurrent mutations
+    // Lock the wallet row to prevent concurrent mutations.
+    // Columns are Prisma's camelCase names (no @map), so they must be double-quoted in raw SQL.
     const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
-      SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
+      SELECT id, "balanceKobo" AS balance_kobo FROM wallets WHERE "userId" = ${userId} FOR UPDATE
     `
     if (!wallet[0]) throw new BadRequestException('Wallet not found')
 
@@ -110,7 +111,7 @@ export class WalletService {
     metadata?: Record<string, unknown>,
   ) {
     const wallet = await tx.$queryRaw<{ id: string; balance_kobo: bigint }[]>`
-      SELECT id, balance_kobo FROM wallets WHERE user_id = ${userId} FOR UPDATE
+      SELECT id, "balanceKobo" AS balance_kobo FROM wallets WHERE "userId" = ${userId} FOR UPDATE
     `
     if (!wallet[0]) throw new BadRequestException('Wallet not found')
 
@@ -161,7 +162,8 @@ export class WalletService {
 
     const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } })
     const reference = `DEP_${userId.slice(0, 8)}_${Date.now()}`
-    const email = `${user.phone}@users.qirosport.ng`
+    // Paystack needs an email; derive a stable one from the phone digits ('+' isn't safe there)
+    const email = `${user.phone.replace(/\D/g, '')}@users.qirosport.ng`
 
     const result = await paystackPost('/transaction/initialize', {
       email,
@@ -194,10 +196,18 @@ export class WalletService {
     if (meta?.userId !== userId) throw new BadRequestException('Reference mismatch')
 
     const amountKobo = result.data.amount as number
-    return this.credit(userId, amountKobo, TransactionType.DEPOSIT, reference, {
-      paystackRef: reference,
-      channel: result.data.channel,
-    })
+    try {
+      return await this.credit(userId, amountKobo, TransactionType.DEPOSIT, reference, {
+        paystackRef: reference,
+        channel: result.data.channel,
+      })
+    } catch (err) {
+      // The webhook credited this reference first (unique ref) — that's success, not an error
+      if ((err as { code?: string }).code === 'P2002') {
+        return { alreadyProcessed: true, newBalanceKobo: (await this.getBalance(userId)).balanceKobo }
+      }
+      throw err
+    }
   }
 
   async requestWithdrawal(

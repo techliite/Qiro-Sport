@@ -106,23 +106,26 @@ export class PaymentsService {
     // Verify bank account first
     const { accountName } = await this.verifyBankAccount(data.accountNumber, data.bankCode)
 
-    // Debit wallet (holds the funds)
-    await this.walletService.debit(
-      data.userId,
-      data.amountKobo,
-      TransactionType.WITHDRAW,
-      `wd-${Date.now()}-${data.userId.slice(0, 8)}`,
-      { bankCode: data.bankCode, accountNumber: data.accountNumber },
-    )
-
-    const request = await prisma.withdrawalRequest.create({
-      data: {
-        userId: data.userId,
-        amountKobo: BigInt(data.amountKobo),
-        bankCode: data.bankCode,
-        accountNumber: data.accountNumber,
-        accountName,
-      },
+    // Hold the funds and record the request together — a failed insert must not swallow the money
+    const request = await prisma.$transaction(async (tx) => {
+      const created = await tx.withdrawalRequest.create({
+        data: {
+          userId: data.userId,
+          amountKobo: BigInt(data.amountKobo),
+          bankCode: data.bankCode,
+          accountNumber: data.accountNumber,
+          accountName,
+        },
+      })
+      await this.walletService.debitInTx(
+        tx,
+        data.userId,
+        data.amountKobo,
+        TransactionType.WITHDRAW,
+        `wd:${created.id}`,
+        { withdrawalRequestId: created.id, bankCode: data.bankCode, accountNumber: data.accountNumber },
+      )
+      return created
     })
 
     this.logger.log(`Withdrawal request #${request.id} created for user ${data.userId}`)

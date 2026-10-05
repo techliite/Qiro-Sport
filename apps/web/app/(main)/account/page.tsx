@@ -7,6 +7,7 @@ import { formatNaira, cn } from '@qiro/ui'
 import { useAuthStore } from '@/store/auth.store'
 import { useWalletStore } from '@/store/wallet.store'
 import { api } from '@/lib/api'
+import { depositWithPaystack } from '@/lib/paystack'
 
 interface Transaction {
   id: string
@@ -16,16 +17,6 @@ interface Transaction {
   ref: string
   createdAt: string
 }
-
-const PAYSTACK_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY ?? ''
-
-const MOCK_TXS: Transaction[] = [
-  { id: '1', type: 'DEPOSIT',  amountKobo: '500000',  runningBalanceKobo: '500000',  ref: 'DEP_001', createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: '2', type: 'STAKE',    amountKobo: '50000',   runningBalanceKobo: '450000',  ref: 'STK_001', createdAt: new Date(Date.now() - 3000000).toISOString() },
-  { id: '3', type: 'WIN',      amountKobo: '105000',  runningBalanceKobo: '555000',  ref: 'WIN_001', createdAt: new Date(Date.now() - 2400000).toISOString() },
-  { id: '4', type: 'STAKE',    amountKobo: '100000',  runningBalanceKobo: '455000',  ref: 'STK_002', createdAt: new Date(Date.now() - 1800000).toISOString() },
-  { id: '5', type: 'WITHDRAW', amountKobo: '200000',  runningBalanceKobo: '255000',  ref: 'WD_001',  createdAt: new Date(Date.now() - 900000).toISOString() },
-]
 
 
 const TX_ICONS: Record<string, React.ReactNode> = {
@@ -72,40 +63,12 @@ function DepositModal({ user, onClose, onSuccess }: DepositModalProps) {
     setErrMsg('')
 
     try {
-      const res = await api.post<{ reference: string; accessCode: string }>('/wallet/deposit/initialize', { amountKobo })
-      const { reference, accessCode } = res.data
-
-      if (!window.PaystackPop) {
-        setStatus('error'); setErrMsg('Payment SDK not loaded. Please refresh.'); return
-      }
-
-      const handler = window.PaystackPop.setup({
-        key: PAYSTACK_PUBLIC_KEY,
-        email: `${user.phone}@users.qirosport.ng`,
-        amount: amountKobo,
-        ref: reference,
-        accessCode,
-        onSuccess: async (tx) => {
-          setStatus('verifying')
-          try {
-            const vr = await api.post<{ newBalanceKobo?: number; balanceKobo?: { balanceKobo: number } }>(
-              '/wallet/deposit/verify',
-              { reference: tx.reference },
-            )
-            const bal = (vr.data as { newBalanceKobo?: number }).newBalanceKobo
-              ?? (vr.data as { balanceKobo?: { balanceKobo: number } }).balanceKobo?.balanceKobo
-              ?? 0
-            setStatus('success')
-            onSuccess(bal)
-          } catch {
-            setStatus('error'); setErrMsg('Payment received but verification failed. Contact support.')
-          }
-        },
-        onCancel: () => setStatus('idle'),
-      })
-      handler.openIframe()
+      const result = await depositWithPaystack(amountKobo)
+      if (result.status === 'cancelled') { setStatus('idle'); return }
+      setStatus('success')
+      onSuccess(result.balanceKobo)
     } catch (e: unknown) {
-      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to initialize payment'
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? (e as Error)?.message ?? 'Failed to initialize payment'
       setStatus('error'); setErrMsg(msg)
     }
   }
@@ -362,12 +325,6 @@ const GAME_LABELS: Record<string, string> = {
   HORSE_RACING: 'Horse Racing',
 }
 
-const MOCK_BETS: VirtualBet[] = [
-  { id: '1', gameType: 'VIRTUAL_FOOTBALL', market: '1x2', pick: '1', oddsDecimal: 1.85, stakeKobo: 50000, payoutKobo: 92500, status: 'WON', createdAt: new Date(Date.now() - 3600000).toISOString() },
-  { id: '2', gameType: 'DICE', market: 'dice', pick: 'OVER:50', oddsDecimal: 1.96, stakeKobo: 20000, payoutKobo: 0, status: 'LOST', createdAt: new Date(Date.now() - 7200000).toISOString() },
-  { id: '3', gameType: 'HORSE_RACING', market: 'win', pick: '3', oddsDecimal: 4.20, stakeKobo: 30000, payoutKobo: null, status: 'PENDING', createdAt: new Date(Date.now() - 1800000).toISOString() },
-]
-
 function BetRow({ bet }: { bet: VirtualBet }) {
   const statusColor = bet.status === 'WON' ? 'text-[#00C48C]' : bet.status === 'LOST' ? 'text-[#EF4444]' : bet.status === 'PENDING' ? 'text-[#F59E0B]' : 'text-[#4D6B9A]'
   const statusBg    = bet.status === 'WON' ? 'bg-[#00C48C]/10' : bet.status === 'LOST' ? 'bg-[#EF4444]/10' : bet.status === 'PENDING' ? 'bg-[#F59E0B]/10' : 'bg-[#1A2B4A]'
@@ -440,10 +397,10 @@ export default function AccountPage() {
     setTxLoading(true)
     api.get<{ transactions: Transaction[]; total: number }>(`/wallet/transactions?page=${txPage}&limit=${LIMIT}`)
       .then((r) => {
-        setTransactions(r.data.transactions?.length ? r.data.transactions : MOCK_TXS)
-        setTxTotal(r.data.total || MOCK_TXS.length)
+        setTransactions(r.data.transactions ?? [])
+        setTxTotal(r.data.total ?? 0)
       })
-      .catch(() => { setTransactions(MOCK_TXS); setTxTotal(MOCK_TXS.length) })
+      .catch(() => { setTransactions([]); setTxTotal(0) })
       .finally(() => setTxLoading(false))
   }, [txPage])
 
@@ -452,10 +409,10 @@ export default function AccountPage() {
     setBetLoading(true)
     api.get<{ bets: VirtualBet[]; total: number }>(`/virtual/my-bets?page=${betPage}&limit=${LIMIT}`)
       .then((r) => {
-        setBets(r.data.bets?.length ? r.data.bets : MOCK_BETS)
-        setBetTotal(r.data.total || MOCK_BETS.length)
+        setBets(r.data.bets ?? [])
+        setBetTotal(r.data.total ?? 0)
       })
-      .catch(() => { setBets(MOCK_BETS); setBetTotal(MOCK_BETS.length) })
+      .catch(() => { setBets([]); setBetTotal(0) })
       .finally(() => setBetLoading(false))
   }, [tab, betPage])
 

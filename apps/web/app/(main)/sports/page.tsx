@@ -70,15 +70,8 @@ export default function SportsLobbyPage() {
 
   useEffect(() => {
     api.get<RecentResult[]>('/virtual/football/results?limit=6')
-      .then((r) => setResults(r.data))
-      .catch(() => {
-        setResults([
-          { id: '1', league: 'A', homeTeam: { name: 'Madrid FC' }, awayTeam: { name: 'Bayern SC' }, homeScore: 2, awayScore: 1 },
-          { id: '2', league: 'B', homeTeam: { name: 'Porto Athletic' }, awayTeam: { name: 'Lisbon FC' }, homeScore: 0, awayScore: 2 },
-          { id: '3', league: 'A', homeTeam: { name: 'Paris City' }, awayTeam: { name: 'Ajax SC' }, homeScore: 3, awayScore: 3 },
-          { id: '4', league: 'B', homeTeam: { name: 'Vienna SC' }, awayTeam: { name: 'Bruges City' }, homeScore: 1, awayScore: 0 },
-        ])
-      })
+      .then((r) => setResults(r.data ?? []))
+      .catch(() => setResults([]))
   }, [])
 
   return (

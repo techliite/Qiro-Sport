@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { RefreshCw, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, Users, Activity } from 'lucide-react'
-import { adminApi } from '@/lib/api'
+import { AlertCircle, RefreshCw, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, Users, Activity } from 'lucide-react'
+import { adminApi, getApiError } from '@/lib/api'
 import { cn } from '@qiro/ui'
 
 interface DailyFinancials {
@@ -14,17 +14,6 @@ interface DailyFinancials {
   ggrKobo:     number
   totalUsers:  number
   newUsers:    number
-}
-
-const MOCK_DATA: DailyFinancials = {
-  date: new Date().toISOString(),
-  deposits:    { totalKobo: 4250000,  count: 17 },
-  withdrawals: { totalKobo: 1800000,  count: 6  },
-  stakes:      { totalKobo: 6750000,  count: 84 },
-  wins:        { totalKobo: 5940000,  count: 61 },
-  ggrKobo:     810000,
-  totalUsers:  412,
-  newUsers:    8,
 }
 
 function formatNaira(kobo: number) {
@@ -70,13 +59,15 @@ export default function FinancialsPage() {
   const [data, setData]         = useState<DailyFinancials | null>(null)
   const [loading, setLoading]   = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [error, setError]       = useState('')
 
   const load = useCallback(async (d: string, silent = false) => {
     if (!silent) setLoading(true); else setRefreshing(true)
     try {
       const res = await adminApi.get<DailyFinancials>(`/admin/financials/daily?date=${d}`)
-      setData(res.data ?? MOCK_DATA)
-    } catch { setData(MOCK_DATA) }
+      setData(res.data ?? null)
+      setError('')
+    } catch (err) { setData(null); setError(getApiError(err, 'Could not load financials')) }
     finally { setLoading(false); setRefreshing(false) }
   }, [])
 
@@ -108,6 +99,10 @@ export default function FinancialsPage() {
 
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-28 bg-[#0F1B3D] rounded-2xl animate-pulse" />)}</div>
+      ) : error ? (
+        <div className="flex items-center gap-2 bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl px-4 py-3 text-sm text-[#EF4444]">
+          <AlertCircle size={15} />{error}
+        </div>
       ) : !data ? null : (
         <>
           {/* GGR highlight */}

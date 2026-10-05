@@ -305,22 +305,27 @@ export class FootballService implements OnModuleInit {
         ? Math.min(Math.floor(Number(bet.stakeKobo) * Number(bet.oddsDecimal)), MAX_WIN_KOBO)
         : 0
 
-      await prisma.virtualBet.update({
-        where: { id: bet.id },
-        data: {
-          status: won ? BetStatus.WON : BetStatus.LOST,
-          payoutKobo: BigInt(payoutKobo),
-        },
-      })
-
-      if (won && payoutKobo > 0) {
-        const { newBalanceKobo } = await this.walletService.credit(
+      // Status change and payout commit together; the guarded update makes a re-run a no-op
+      const settled = await prisma.$transaction(async (tx) => {
+        const claimed = await tx.virtualBet.updateMany({
+          where: { id: bet.id, status: BetStatus.PENDING },
+          data: { status: won ? BetStatus.WON : BetStatus.LOST, payoutKobo: BigInt(payoutKobo) },
+        })
+        if (claimed.count === 0) return null
+        if (!won || payoutKobo === 0) return { newBalanceKobo: undefined }
+        return this.walletService.creditInTx(
+          tx,
           bet.userId,
           payoutKobo,
           TransactionType.WIN,
           `vf:win:${bet.id}`,
           { betId: bet.id, roundId: round.id, market: bet.market, pick: bet.pick },
         )
+      })
+      if (!settled) continue
+
+      if (won && payoutKobo > 0) {
+        const newBalanceKobo = settled.newBalanceKobo
         this.gateway.emitToUser(bet.userId, WsEvent.USER_BET_SETTLED, {
           betId: bet.id, won: true, payoutKobo,
         })
@@ -400,21 +405,23 @@ export class FootballService implements OnModuleInit {
 
     const potentialPayout = Math.min(Math.floor(stakeKobo * oddsDecimal), MAX_WIN_KOBO)
 
-    await this.walletService.debit(userId, stakeKobo, TransactionType.STAKE, `vf:stake:${randomUUID()}`, {
-      roundId, market, pick, oddsDecimal,
-    })
-
-    const bet = await prisma.virtualBet.create({
-      data: {
-        userId,
-        gameType: 'VIRTUAL_FOOTBALL',
-        roundId,
-        market,
-        pick,
-        oddsDecimal,
-        stakeKobo: BigInt(stakeKobo),
-        status: BetStatus.PENDING,
-      },
+    // Debit and bet creation commit together — a failed insert must not lose the stake
+    const bet = await prisma.$transaction(async (tx) => {
+      await this.walletService.debitInTx(tx, userId, stakeKobo, TransactionType.STAKE, `vf:stake:${randomUUID()}`, {
+        roundId, market, pick, oddsDecimal,
+      })
+      return tx.virtualBet.create({
+        data: {
+          userId,
+          gameType: 'VIRTUAL_FOOTBALL',
+          roundId,
+          market,
+          pick,
+          oddsDecimal,
+          stakeKobo: BigInt(stakeKobo),
+          status: BetStatus.PENDING,
+        },
+      })
     })
 
     return { bet: { ...bet, stakeKobo: Number(bet.stakeKobo) }, potentialPayoutKobo: potentialPayout, odds }

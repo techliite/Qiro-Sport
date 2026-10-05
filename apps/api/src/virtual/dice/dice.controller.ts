@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { DiceService } from './dice.service'
-import { DiceRollDto } from '@qiro/types'
+import { DiceAutoBetBody, DiceRollBody } from '../bet-bodies.dto'
 import { CurrentUser, AuthUser } from '../../auth/decorators/current-user.decorator'
 
 @Controller('virtual/dice')
@@ -13,14 +13,14 @@ export class DiceController {
   }
 
   @Post('roll')
-  roll(@CurrentUser() user: AuthUser, @Body() body: DiceRollDto) {
+  roll(@CurrentUser() user: AuthUser, @Body() body: DiceRollBody) {
     return this.diceService.roll(user.id, body)
   }
 
   @Post('auto-bet')
   autoBet(
     @CurrentUser() user: AuthUser,
-    @Body() body: { rollCount: number; dto: DiceRollDto },
+    @Body() body: DiceAutoBetBody,
   ) {
     return this.diceService.autoBet(user.id, body.rollCount, body.dto)
   }
