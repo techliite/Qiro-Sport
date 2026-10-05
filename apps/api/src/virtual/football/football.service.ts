@@ -1,16 +1,18 @@
 import { Injectable, BadRequestException, OnModuleInit, Logger } from '@nestjs/common'
-import { prisma } from '@qiro/db'
+import { prisma, Prisma } from '@qiro/db'
 import { VirtualLeague, RoundStatus, BetStatus, TransactionType, WsEvent } from '@qiro/types'
 import { createHash, randomBytes } from 'node:crypto'
 import { randomUUID } from 'node:crypto'
 import { WalletService } from '../../wallet/wallet.service'
 import { QiroGateway } from '../../gateway/qiro.gateway'
+import { evaluateBet } from '../../sports/settlement'
 
 const ROUND_DURATION_MS = 5 * 60 * 1000 // 5 minutes
 const HOUSE_MARGIN = 1.08               // 8% house edge
 const MIN_STAKE_KOBO = 10_000           // ₦100
 const MAX_STAKE_KOBO = 5_000_000        // ₦50,000
 const MAX_WIN_KOBO = 100_000_000        // ₦1,000,000
+const MAX_MULTI_LEGS = 10
 
 // ─── Seeded PRNG (mulberry32, provably fair) ───────────────────────────────
 
@@ -194,6 +196,7 @@ export class FootballService implements OnModuleInit {
 
   async tick() {
     await this.settleExpiredRounds()
+    await this.settleDecidedMultis()
     await this.ensureRoundsExist()
   }
 
@@ -337,6 +340,8 @@ export class FootballService implements OnModuleInit {
       }
     }
 
+    await this.settleMultiLegs(round.id, homeScore, awayScore)
+
     // Finalize round
     const settled = await prisma.virtualFootballRound.update({
       where: { id: round.id },
@@ -364,36 +369,91 @@ export class FootballService implements OnModuleInit {
     })
 
     this.logger.log(`Settled round ${round.id}: ${homeScore}-${awayScore} (${bets.length} bets)`)
+    await this.settleDecidedMultis()
+  }
+
+  // ── Multiple (accumulator) settlement ──────────────────────────────────────
+
+  private async settleMultiLegs(roundId: string, homeScore: number, awayScore: number) {
+    const legs = await prisma.virtualMultiSelection.findMany({
+      where: { roundId, result: BetStatus.PENDING },
+      select: { id: true, market: true, pick: true },
+    })
+    if (legs.length === 0) return
+    const won = legs.filter((l) => didWin(l.market, l.pick, homeScore, awayScore)).map((l) => l.id)
+    const lost = legs.filter((l) => !won.includes(l.id)).map((l) => l.id)
+    if (won.length) await prisma.virtualMultiSelection.updateMany({ where: { id: { in: won }, result: BetStatus.PENDING }, data: { result: BetStatus.WON } })
+    if (lost.length) await prisma.virtualMultiSelection.updateMany({ where: { id: { in: lost }, result: BetStatus.PENDING }, data: { result: BetStatus.LOST } })
+  }
+
+  /**
+   * Settles every pending Multiple that has a decided leg. Runs after each round and on
+   * every tick, so a crash between leg updates and payout is recovered automatically.
+   */
+  async settleDecidedMultis() {
+    const pending = await prisma.virtualMultiBet.findMany({
+      where: { status: BetStatus.PENDING, selections: { some: { result: { not: BetStatus.PENDING } } } },
+      select: { id: true },
+    })
+    for (const { id } of pending) {
+      try {
+        await this.settleMulti(id)
+      } catch (err) {
+        this.logger.error(`Failed to settle multi bet ${id}`, err)
+      }
+    }
+  }
+
+  private async settleMulti(id: string) {
+    const settled = await prisma.$transaction(async (tx) => {
+      const bet = await tx.virtualMultiBet.findUnique({ where: { id }, include: { selections: true } })
+      if (!bet || bet.status !== BetStatus.PENDING) return null
+
+      const outcome = evaluateBet(
+        Number(bet.stakeKobo),
+        bet.selections.map((s) => ({ result: s.result, oddsDecimal: Number(s.oddsDecimal) })),
+        MAX_WIN_KOBO,
+      )
+      if (outcome.status === 'PENDING') return null
+
+      const payoutKobo = outcome.status === 'WON' ? outcome.payoutKobo : outcome.status === 'VOID' ? outcome.refundKobo : 0
+      const claimed = await tx.virtualMultiBet.updateMany({
+        where: { id, status: BetStatus.PENDING },
+        data: { status: outcome.status, payoutKobo: BigInt(payoutKobo), settledAt: new Date() },
+      })
+      if (claimed.count === 0) return null
+
+      let newBalanceKobo: number | undefined
+      if (payoutKobo > 0) {
+        const won = outcome.status === 'WON'
+        ;({ newBalanceKobo } = await this.walletService.creditInTx(
+          tx, bet.userId, payoutKobo, won ? TransactionType.WIN : TransactionType.REFUND,
+          `vf:multi:${won ? 'win' : 'refund'}:${id}`, { multiBetId: id },
+        ))
+      }
+      return { userId: bet.userId, status: outcome.status, payoutKobo, newBalanceKobo }
+    })
+    if (!settled) return
+
+    this.gateway.emitToUser(settled.userId, WsEvent.USER_BET_SETTLED, {
+      betId: id, multi: true, won: settled.status === 'WON', status: settled.status, payoutKobo: settled.payoutKobo,
+    })
+    if (settled.newBalanceKobo !== undefined) {
+      this.gateway.emitToUser(settled.userId, WsEvent.USER_BALANCE, { balanceKobo: settled.newBalanceKobo })
+    }
   }
 
   // ── Bet Placement ─────────────────────────────────────────────────────────
 
-  async placeBet(data: {
-    userId: string
-    roundId: string
-    market: string
-    pick: string
-    stakeKobo: number
-  }) {
-    const { userId, roundId, market, pick, stakeKobo } = data
-
-    if (!Number.isInteger(stakeKobo) || stakeKobo < MIN_STAKE_KOBO) {
-      throw new BadRequestException(`Minimum stake is ₦${MIN_STAKE_KOBO / 100}`)
-    }
-    if (stakeKobo > MAX_STAKE_KOBO) {
-      throw new BadRequestException(`Maximum stake is ₦${MAX_STAKE_KOBO / 100}`)
-    }
-
+  /** Validates a selection against the live round and returns the server's odds for it. */
+  private async quoteSelection(roundId: string, market: string, pick: string) {
     const round = await prisma.virtualFootballRound.findUnique({
       where: { id: roundId },
       include: { homeTeam: true, awayTeam: true },
     })
     if (!round) throw new BadRequestException('Round not found')
-    if (round.status !== RoundStatus.BETTING_OPEN) {
-      throw new BadRequestException('Betting is closed for this round')
-    }
-    if (round.cycleAt.getTime() - Date.now() < 30_000) {
-      throw new BadRequestException('Betting has closed for this round')
+    if (round.status !== RoundStatus.BETTING_OPEN || round.cycleAt.getTime() - Date.now() < 30_000) {
+      throw new BadRequestException(`Betting has closed for ${round.homeTeam.name} vs ${round.awayTeam.name}`)
     }
 
     const odds = computeOdds(
@@ -402,29 +462,123 @@ export class FootballService implements OnModuleInit {
     )
     const oddsDecimal = getOddForPick(odds, market, pick)
     if (!oddsDecimal) throw new BadRequestException('Invalid market or pick')
+    return { round, odds, oddsDecimal }
+  }
 
+  private assertStake(stakeKobo: number, label = 'stake') {
+    if (!Number.isInteger(stakeKobo) || stakeKobo < MIN_STAKE_KOBO) {
+      throw new BadRequestException(`Minimum ${label} is ₦${MIN_STAKE_KOBO / 100}`)
+    }
+    if (stakeKobo > MAX_STAKE_KOBO) {
+      throw new BadRequestException(`Maximum ${label} is ₦${MAX_STAKE_KOBO / 100}`)
+    }
+  }
+
+  private async createSingleInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    sel: { roundId: string; market: string; pick: string; stakeKobo: number; oddsDecimal: number },
+  ) {
+    await this.walletService.debitInTx(tx, userId, sel.stakeKobo, TransactionType.STAKE, `vf:stake:${randomUUID()}`, {
+      roundId: sel.roundId, market: sel.market, pick: sel.pick, oddsDecimal: sel.oddsDecimal,
+    })
+    return tx.virtualBet.create({
+      data: {
+        userId,
+        gameType: 'VIRTUAL_FOOTBALL',
+        roundId: sel.roundId,
+        market: sel.market,
+        pick: sel.pick,
+        oddsDecimal: sel.oddsDecimal,
+        stakeKobo: BigInt(sel.stakeKobo),
+        status: BetStatus.PENDING,
+      },
+    })
+  }
+
+  async placeBet(data: { userId: string; roundId: string; market: string; pick: string; stakeKobo: number }) {
+    const { userId, roundId, market, pick, stakeKobo } = data
+    this.assertStake(stakeKobo)
+    const { odds, oddsDecimal } = await this.quoteSelection(roundId, market, pick)
     const potentialPayout = Math.min(Math.floor(stakeKobo * oddsDecimal), MAX_WIN_KOBO)
 
     // Debit and bet creation commit together — a failed insert must not lose the stake
-    const bet = await prisma.$transaction(async (tx) => {
-      await this.walletService.debitInTx(tx, userId, stakeKobo, TransactionType.STAKE, `vf:stake:${randomUUID()}`, {
-        roundId, market, pick, oddsDecimal,
-      })
-      return tx.virtualBet.create({
+    const bet = await prisma.$transaction((tx) =>
+      this.createSingleInTx(tx, userId, { roundId, market, pick, stakeKobo, oddsDecimal }),
+    )
+    return { bet: { ...bet, stakeKobo: Number(bet.stakeKobo) }, potentialPayoutKobo: potentialPayout, odds }
+  }
+
+  /**
+   * "Single" slip — every selection is its own bet. All-or-nothing: if any selection is
+   * invalid or the balance can't cover the total, nothing is placed (the old client loop
+   * could place half a slip and then fail).
+   */
+  async placeSingles(userId: string, bets: { roundId: string; market: string; pick: string; stakeKobo: number }[]) {
+    const keys = bets.map((b) => `${b.roundId}:${b.market}:${b.pick}`)
+    if (new Set(keys).size !== keys.length) throw new BadRequestException('The same selection appears twice')
+    bets.forEach((b) => this.assertStake(b.stakeKobo, 'stake per selection'))
+
+    const quoted = await Promise.all(bets.map(async (b) => ({ ...b, ...(await this.quoteSelection(b.roundId, b.market, b.pick)) })))
+
+    const created = await prisma.$transaction(async (tx) => {
+      const out = []
+      for (const q of quoted) out.push(await this.createSingleInTx(tx, userId, q))
+      return out
+    }, { timeout: 20_000 })
+
+    return {
+      bets: created.map((b) => ({ ...b, stakeKobo: Number(b.stakeKobo), oddsDecimal: Number(b.oddsDecimal) })),
+      totalStakeKobo: bets.reduce((sum, b) => sum + b.stakeKobo, 0),
+    }
+  }
+
+  /**
+   * "Multiple" (accumulator) — one stake at the product of the selections' odds.
+   * One selection per match: legs from the same match are correlated and can't be combined.
+   */
+  async placeMulti(userId: string, selections: { roundId: string; market: string; pick: string }[], stakeKobo: number) {
+    if (selections.length < 2) throw new BadRequestException('A Multiple needs at least 2 selections')
+    if (selections.length > MAX_MULTI_LEGS) throw new BadRequestException(`A Multiple can have at most ${MAX_MULTI_LEGS} selections`)
+    if (new Set(selections.map((s) => s.roundId)).size !== selections.length) {
+      throw new BadRequestException('Only one selection per match is allowed in a Multiple')
+    }
+    this.assertStake(stakeKobo)
+
+    const quoted = await Promise.all(selections.map(async (s) => ({ ...s, ...(await this.quoteSelection(s.roundId, s.market, s.pick)) })))
+    const product = quoted.reduce((acc, q) => acc * q.oddsDecimal, 1)
+    const totalOdds = Math.round(product * 10_000) / 10_000
+    const potentialWinKobo = Math.min(Math.floor(stakeKobo * product), MAX_WIN_KOBO)
+
+    const multi = await prisma.$transaction(async (tx) => {
+      const created = await tx.virtualMultiBet.create({
         data: {
           userId,
-          gameType: 'VIRTUAL_FOOTBALL',
-          roundId,
-          market,
-          pick,
-          oddsDecimal,
           stakeKobo: BigInt(stakeKobo),
-          status: BetStatus.PENDING,
+          totalOdds,
+          potentialWinKobo: BigInt(potentialWinKobo),
+          selections: {
+            create: quoted.map((q) => ({ roundId: q.roundId, market: q.market, pick: q.pick, oddsDecimal: q.oddsDecimal })),
+          },
         },
+        include: { selections: true },
       })
+      await this.walletService.debitInTx(tx, userId, stakeKobo, TransactionType.STAKE, `vf:multi:stake:${created.id}`, {
+        multiBetId: created.id, legs: quoted.length, totalOdds,
+      })
+      return created
     })
 
-    return { bet: { ...bet, stakeKobo: Number(bet.stakeKobo) }, potentialPayoutKobo: potentialPayout, odds }
+    return {
+      multiBet: {
+        id: multi.id,
+        stakeKobo,
+        totalOdds,
+        potentialWinKobo,
+        status: multi.status,
+        selections: multi.selections.map((s) => ({ ...s, oddsDecimal: Number(s.oddsDecimal) })),
+      },
+    }
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────
@@ -483,12 +637,41 @@ export class FootballService implements OnModuleInit {
       prisma.virtualBet.count({ where: { userId, gameType: 'VIRTUAL_FOOTBALL' } }),
     ])
 
+    const multis = page === 1
+      ? await prisma.virtualMultiBet.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: { selections: { include: { round: { include: { homeTeam: true, awayTeam: true } } } } },
+        })
+      : []
+
     return {
       bets: bets.map((b) => ({
         ...b,
         stakeKobo: Number(b.stakeKobo),
         payoutKobo: b.payoutKobo ? Number(b.payoutKobo) : null,
         oddsDecimal: Number(b.oddsDecimal),
+      })),
+      multiBets: multis.map((m) => ({
+        id: m.id,
+        stakeKobo: Number(m.stakeKobo),
+        totalOdds: Number(m.totalOdds),
+        potentialWinKobo: Number(m.potentialWinKobo),
+        payoutKobo: m.payoutKobo !== null ? Number(m.payoutKobo) : null,
+        status: m.status,
+        createdAt: m.createdAt.toISOString(),
+        selections: m.selections.map((sel) => ({
+          roundId: sel.roundId,
+          market: sel.market,
+          pick: sel.pick,
+          oddsDecimal: Number(sel.oddsDecimal),
+          result: sel.result,
+          homeTeam: sel.round.homeTeam.name,
+          awayTeam: sel.round.awayTeam.name,
+          homeScore: sel.round.homeScore,
+          awayScore: sel.round.awayScore,
+        })),
       })),
       total,
       page,

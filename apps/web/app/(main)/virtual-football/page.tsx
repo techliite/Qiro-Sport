@@ -60,6 +60,72 @@ interface UserBet {
   createdAt: string
 }
 
+interface MultiBet {
+  id: string
+  stakeKobo: number
+  totalOdds: number
+  potentialWinKobo: number
+  payoutKobo: number | null
+  status: 'PENDING' | 'WON' | 'LOST' | 'VOID'
+  createdAt: string
+  selections: {
+    roundId: string
+    market: string
+    pick: string
+    oddsDecimal: number
+    result: 'PENDING' | 'WON' | 'LOST' | 'VOID'
+    homeTeam: string
+    awayTeam: string
+    homeScore: number | null
+    awayScore: number | null
+  }[]
+}
+
+const STATUS_CLS = {
+  PENDING: 'text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/20',
+  WON:     'text-[#00C48C] bg-[#00C48C]/10 border-[#00C48C]/20',
+  LOST:    'text-[#EF4444] bg-[#EF4444]/10 border-[#EF4444]/20',
+  VOID:    'text-[#4D6B9A] bg-[#4D6B9A]/10 border-[#4D6B9A]/20',
+} as const
+
+function MultiBetCard({ bet }: { bet: MultiBet }) {
+  return (
+    <div className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3">
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-xs font-bold text-[#E6F1FF]">Multiple · {bet.selections.length} legs</span>
+            <span className="text-[10px] text-[#0066FF] font-bold">@{bet.totalOdds.toFixed(2)}</span>
+          </div>
+          <p className="text-[10px] text-[#4D6B9A]">
+            {new Intl.DateTimeFormat('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(bet.createdAt))}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-xs font-mono font-bold text-[#E6F1FF]">{formatNaira(bet.stakeKobo)}</p>
+          {bet.status === 'WON' && bet.payoutKobo != null
+            ? <p className="text-[10px] font-mono text-[#00C48C]">+{formatNaira(bet.payoutKobo)}</p>
+            : bet.status === 'PENDING' && <p className="text-[10px] font-mono text-[#4D6B9A]">to win {formatNaira(bet.potentialWinKobo)}</p>}
+        </div>
+        <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-lg border shrink-0', STATUS_CLS[bet.status])}>{bet.status}</span>
+      </div>
+      <div className="mt-2 pt-2 border-t border-[#1A2B4A] space-y-1">
+        {bet.selections.map((sel) => (
+          <div key={`${sel.roundId}-${sel.market}`} className="flex items-center gap-2 text-[11px]">
+            <span className="flex-1 min-w-0 truncate text-[#E6F1FF]">
+              {sel.homeTeam} vs {sel.awayTeam}
+              {sel.homeScore != null && sel.awayScore != null && <span className="ml-1.5 font-mono text-[#4D6B9A]">{sel.homeScore}–{sel.awayScore}</span>}
+            </span>
+            <span className="text-[#4D6B9A] shrink-0">{pickLabel(sel.market, sel.pick, sel.homeTeam, sel.awayTeam)}</span>
+            <span className="font-bold text-[#0066FF] shrink-0">@{sel.oddsDecimal.toFixed(2)}</span>
+            <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded border shrink-0', STATUS_CLS[sel.result])}>{sel.result}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Mock data (shown when API is unreachable) ────────────────────────────────
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -234,6 +300,11 @@ function MatchCard({ round, selections, onToggle }: {
 
 // ─── Bet Slip ─────────────────────────────────────────────────────────────────
 
+const MIN_STAKE_KOBO = 10_000      // ₦100 — per bet
+const MAX_WIN_KOBO = 100_000_000   // ₦1,000,000 — payout cap
+
+type SlipMode = 'single' | 'multi'
+
 function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
   selections: Selection[]
   onRemove: (roundId: string, market: string, pick: string) => void
@@ -241,26 +312,54 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
   onBetPlaced: () => void
 }) {
   const [stakeInput, setStakeInput] = useState('')
+  const [mode, setMode] = useState<SlipMode>('single')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const setBalance = useWalletStore((s) => s.setBalance)
 
   const stakeKobo = Math.floor((parseFloat(stakeInput) || 0) * 100)
-  const perSelectionStake = selections.length > 0 ? Math.floor(stakeKobo / selections.length) : 0
+  const n = selections.length
+
+  // Multiple: one selection per match, at least two matches
+  const roundIds = selections.map((s) => s.roundId)
+  const sameMatch = new Set(roundIds).size !== roundIds.length
+  const canMulti = n >= 2 && !sameMatch
+  const isMulti = mode === 'multi' && canMulti
+
+  // Single: the stake is split evenly across selections (whole naira only, so no kobo crumbs)
+  const perSelectionKobo = n > 0 ? Math.floor(stakeKobo / n / 100) * 100 : 0
+  const singlesTotalKobo = perSelectionKobo * n
+  const singlesReturnKobo = selections.reduce((sum, s) => sum + Math.min(Math.floor(perSelectionKobo * s.odds), MAX_WIN_KOBO), 0)
+
+  // Multiple: one stake at the product of all odds
+  const totalOdds = selections.reduce((acc, s) => acc * s.odds, 1)
+  const multiReturnKobo = Math.min(Math.floor(stakeKobo * totalOdds), MAX_WIN_KOBO)
+
+  const chargeKobo = isMulti ? stakeKobo : singlesTotalKobo
+  const validationError =
+    stakeKobo === 0 ? '' :
+    isMulti
+      ? (stakeKobo < MIN_STAKE_KOBO ? 'Minimum stake is ₦100' : '')
+      : (perSelectionKobo < MIN_STAKE_KOBO
+          ? `₦${(perSelectionKobo / 100).toLocaleString()} per selection is below the ₦100 minimum — stake at least ₦${(n * 100).toLocaleString()}`
+          : '')
 
   const handlePlace = async () => {
-    if (selections.length === 0 || stakeKobo < 10_000) return
+    if (n === 0 || stakeKobo === 0 || validationError) return
     setLoading(true)
     setError('')
 
     try {
-      for (const sel of selections) {
-        await api.post('/virtual/football/bet', {
-          roundId: sel.roundId,
-          market: sel.market,
-          pick: sel.pick,
-          stakeKobo: perSelectionStake,
+      if (isMulti) {
+        await api.post('/virtual/football/multi-bet', {
+          selections: selections.map((s) => ({ roundId: s.roundId, market: s.market, pick: s.pick })),
+          stakeKobo,
+        })
+      } else {
+        // One request — the API places every single or none of them
+        await api.post('/virtual/football/bets', {
+          bets: selections.map((s) => ({ roundId: s.roundId, market: s.market, pick: s.pick, stakeKobo: perSelectionKobo })),
         })
       }
       const balRes = await api.get<{ balanceKobo: number }>('/wallet/balance')
@@ -271,7 +370,8 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
         onBetPlaced()
       }, 2000)
     } catch (err: unknown) {
-      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? 'Failed to place bet')
+      const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message
+      setError((Array.isArray(message) ? message[0] : message) ?? 'Failed to place bet')
     } finally {
       setLoading(false)
     }
@@ -283,7 +383,7 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
         <div className="w-12 h-12 rounded-full bg-[#00C48C]/10 flex items-center justify-center">
           <CheckCircle2 className="text-[#00C48C]" size={28} />
         </div>
-        <p className="font-bold text-[#E6F1FF]">Bet Placed!</p>
+        <p className="font-bold text-[#E6F1FF]">{isMulti ? 'Multiple Placed!' : n > 1 ? `${n} Bets Placed!` : 'Bet Placed!'}</p>
         <p className="text-sm text-[#4D6B9A]">Good luck! Results in moments.</p>
       </div>
     )
@@ -291,6 +391,34 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Single / Multiple */}
+      <div className="grid grid-cols-2 gap-1 p-1 bg-[#081226] border border-[#1A2B4A] rounded-xl">
+        {([['single', 'Single'], ['multi', 'Multiple']] as [SlipMode, string][]).map(([m, label]) => {
+          const disabled = m === 'multi' && !canMulti
+          return (
+            <button
+              key={m}
+              onClick={() => !disabled && setMode(m)}
+              disabled={disabled}
+              className={cn(
+                'h-8 rounded-lg text-xs font-bold transition-all',
+                (m === 'multi' ? isMulti : !isMulti)
+                  ? 'bg-[#0066FF] text-white shadow-[0_0_12px_rgba(0,102,255,0.35)]'
+                  : 'text-[#4D6B9A] hover:text-[#E6F1FF] disabled:opacity-40 disabled:hover:text-[#4D6B9A]',
+              )}
+            >
+              {label}
+              {m === 'multi' && canMulti && <span className="ml-1 font-black tabular-nums">@{totalOdds.toFixed(2)}</span>}
+            </button>
+          )
+        })}
+      </div>
+      {mode === 'multi' && !canMulti && (
+        <p className="text-[10px] text-[#F59E0B] -mt-1">
+          {n < 2 ? 'Add selections from at least 2 matches for a Multiple.' : 'A Multiple allows one selection per match — remove the extra picks from the same match.'}
+        </p>
+      )}
+
       <div className="space-y-2">
         {selections.map((s) => (
           <div key={`${s.roundId}-${s.market}-${s.pick}`} className="flex items-center gap-2 bg-[#081226] rounded-xl px-3 py-2.5">
@@ -309,7 +437,7 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
       {/* Stake */}
       <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-semibold text-[#4D6B9A] uppercase tracking-wider">
-          Total Stake (₦){selections.length > 1 && ` · ₦${(perSelectionStake / 100).toFixed(0)} per bet`}
+          {isMulti ? 'Stake (₦)' : n > 1 ? `Total Stake (₦) · ${formatNaira(perSelectionKobo)} per selection` : 'Stake (₦)'}
         </label>
         <div className="flex items-center gap-2">
           <button
@@ -334,13 +462,13 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
           </button>
         </div>
         <div className="flex gap-1.5">
-          {[500, 1000, 2000, 5000].map((n) => (
+          {[500, 1000, 2000, 5000].map((v) => (
             <button
-              key={n}
-              onClick={() => setStakeInput(String(n))}
+              key={v}
+              onClick={() => setStakeInput(String(v))}
               className="flex-1 py-1 rounded-lg bg-[#081226] border border-[#1A2B4A] text-[10px] font-semibold text-[#4D6B9A] hover:border-[#0066FF]/40 hover:text-[#E6F1FF] transition-all"
             >
-              ₦{n.toLocaleString()}
+              ₦{v.toLocaleString()}
             </button>
           ))}
         </div>
@@ -348,19 +476,41 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
 
       {/* Summary */}
       <div className="bg-[#081226] rounded-xl px-3 py-2.5 space-y-1.5">
-        {selections.map((s) => (
-          <div key={`${s.roundId}-${s.market}-${s.pick}`} className="flex justify-between text-xs">
-            <span className="text-[#4D6B9A] truncate max-w-[60%]">{s.label}</span>
-            <span className="font-semibold text-[#E6F1FF]">
-              {formatNaira(perSelectionStake)} → {formatNaira(Math.floor(perSelectionStake * s.odds))}
-            </span>
-          </div>
-        ))}
+        {isMulti ? (
+          <>
+            <div className="flex justify-between text-xs">
+              <span className="text-[#4D6B9A]">Combined odds ({n} selections)</span>
+              <span className="font-bold text-[#0066FF] tabular-nums">{totalOdds.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-[#4D6B9A]">Potential win</span>
+              <span className="font-black text-[#00C48C] tabular-nums">{formatNaira(multiReturnKobo)}</span>
+            </div>
+            <p className="text-[10px] text-[#4D6B9A]">All {n} selections must win.</p>
+          </>
+        ) : (
+          <>
+            {selections.map((s) => (
+              <div key={`${s.roundId}-${s.market}-${s.pick}`} className="flex justify-between text-xs">
+                <span className="text-[#4D6B9A] truncate max-w-[60%]">{s.label}</span>
+                <span className="font-semibold text-[#E6F1FF]">
+                  {formatNaira(perSelectionKobo)} → {formatNaira(Math.min(Math.floor(perSelectionKobo * s.odds), MAX_WIN_KOBO))}
+                </span>
+              </div>
+            ))}
+            {n > 1 && (
+              <div className="flex justify-between text-xs pt-1.5 border-t border-[#1A2B4A]">
+                <span className="text-[#4D6B9A]">If all win</span>
+                <span className="font-black text-[#00C48C] tabular-nums">{formatNaira(singlesReturnKobo)}</span>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {error && (
+      {(validationError || error) && (
         <div className="flex items-center gap-2 text-xs text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 rounded-xl px-3 py-2">
-          <AlertCircle size={13} />{error}
+          <AlertCircle size={13} className="shrink-0" />{validationError || error}
         </div>
       )}
 
@@ -370,12 +520,14 @@ function BetSlip({ selections, onRemove, onClear, onBetPlaced }: {
         </button>
         <button
           onClick={handlePlace}
-          disabled={loading || stakeKobo < 10_000 || selections.length === 0}
+          disabled={loading || n === 0 || chargeKobo === 0 || !!validationError}
           className="flex-1 h-11 rounded-xl bg-[#0066FF] text-white font-bold text-sm shadow-[0_0_16px_rgba(0,102,255,0.35)] hover:shadow-[0_0_24px_rgba(0,102,255,0.5)] hover:bg-[#0052CC] disabled:opacity-50 disabled:shadow-none transition-all"
         >
           {loading
             ? <Loader2 size={16} className="animate-spin mx-auto" />
-            : `Place Bet · ${formatNaira(stakeKobo)}`}
+            : isMulti
+              ? `Place Multiple · ${formatNaira(chargeKobo)}`
+              : `Place ${n > 1 ? `${n} Bets` : 'Bet'} · ${formatNaira(chargeKobo)}`}
         </button>
       </div>
     </div>
@@ -408,6 +560,7 @@ export default function VirtualFootballPage() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [results, setResults] = useState<Result[]>([])
   const [myBets, setMyBets] = useState<UserBet[]>([])
+  const [myMultis, setMyMultis] = useState<MultiBet[]>([])
   const [tab, setTab] = useState<Tab>('all')
   const [slipOpen, setSlipOpen] = useState(false)
   const [selections, setSelections] = useState<Selection[]>([])
@@ -437,8 +590,9 @@ export default function VirtualFootballPage() {
 
   const fetchMyBets = useCallback(async () => {
     try {
-      const res = await api.get<{ bets: UserBet[] }>('/virtual/football/my-bets')
-      setMyBets(res.data.bets)
+      const res = await api.get<{ bets: UserBet[]; multiBets?: MultiBet[] }>('/virtual/football/my-bets')
+      setMyBets(res.data.bets ?? [])
+      setMyMultis(res.data.multiBets ?? [])
     } catch { /* ignore */ }
   }, [])
 
@@ -544,20 +698,16 @@ export default function VirtualFootballPage() {
         {/* My bets */}
         {tab === 'mybets' && (
           <section>
-            {myBets.length === 0 ? (
+            {myBets.length === 0 && myMultis.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-14">
                 <History size={40} className="text-[#1A2B4A]" />
                 <p className="text-[#4D6B9A] text-sm">No bets placed yet</p>
               </div>
             ) : (
               <div className="space-y-2">
+                {myMultis.map((m) => <MultiBetCard key={m.id} bet={m} />)}
                 {myBets.map((bet) => {
-                  const cfg = {
-                    PENDING: 'text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/20',
-                    WON:     'text-[#00C48C] bg-[#00C48C]/10 border-[#00C48C]/20',
-                    LOST:    'text-[#EF4444] bg-[#EF4444]/10 border-[#EF4444]/20',
-                    VOID:    'text-[#4D6B9A] bg-[#4D6B9A]/10 border-[#4D6B9A]/20',
-                  }[bet.status]
+                  const cfg = STATUS_CLS[bet.status]
                   return (
                     <div key={bet.id} className="bg-[#0F1B3D] border border-[#1A2B4A] rounded-xl px-4 py-3 flex items-center gap-3">
                       <div className="flex-1 min-w-0">

@@ -138,22 +138,28 @@ function BetSlip({ race, selections, onRemove, onClear, onSuccess }: {
   const [success, setSuccess]       = useState(false)
 
   const stakeKobo = Math.floor(Number(stakeInput) * 100)
-  const perSelKobo = Math.floor(stakeKobo / selections.length)
+  // Single bets: the stake is split evenly (whole naira) — each selection is its own bet
+  const perSelKobo = selections.length > 0 ? Math.floor(stakeKobo / selections.length / 100) * 100 : 0
+  const chargeKobo = perSelKobo * selections.length
   const totalReturn = selections.reduce((acc, s) => acc + Math.floor(perSelKobo * s.odds), 0)
 
   const handlePlace = async () => {
-    if (stakeKobo < 10_000) { setError('Min stake ₦100'); return }
-    if (stakeKobo > balance) { setError('Insufficient balance'); return }
+    if (perSelKobo < 10_000) {
+      setError(selections.length > 1
+        ? `₦${(perSelKobo / 100).toLocaleString()} per selection is below the ₦100 minimum — stake at least ₦${(selections.length * 100).toLocaleString()}`
+        : 'Min stake ₦100')
+      return
+    }
+    if (chargeKobo > balance) { setError('Insufficient balance'); return }
     setLoading(true); setError('')
 
     try {
-      for (const sel of selections) {
-        await api.post('/virtual/horse-racing/bet', {
-          roundId: race.id, horseId: sel.horseId,
-          market: sel.market, stakeKobo: perSelKobo,
-        })
-      }
-      setBalance(balance - stakeKobo)
+      // One request — the API places every bet or none of them
+      await api.post('/virtual/horse-racing/bets', {
+        bets: selections.map((sel) => ({ roundId: race.id, horseId: sel.horseId, market: sel.market, stakeKobo: perSelKobo })),
+      })
+      const balRes = await api.get<{ balanceKobo: number }>('/wallet/balance')
+      setBalance(balRes.data.balanceKobo)
       setSuccess(true)
       setTimeout(() => { setSuccess(false); onSuccess() }, 2000)
     } catch (e: unknown) {
@@ -214,8 +220,8 @@ function BetSlip({ race, selections, onRemove, onClear, onSuccess }: {
 
       <div className="flex gap-2">
         <button onClick={onClear} className="h-11 px-4 rounded-xl border border-[#1A2B4A] text-sm text-[#4D6B9A] font-semibold hover:bg-[#0F1B3D] transition-all">Clear</button>
-        <button onClick={handlePlace} disabled={loading || stakeKobo < 10_000} className="flex-1 h-11 rounded-xl bg-[#0066FF] text-white font-bold text-sm shadow-[0_0_16px_rgba(0,102,255,0.35)] hover:bg-[#0052CC] disabled:opacity-50 disabled:shadow-none transition-all">
-          {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : `Place Bet · ₦${(stakeKobo / 100).toLocaleString()}`}
+        <button onClick={handlePlace} disabled={loading || perSelKobo < 10_000} className="flex-1 h-11 rounded-xl bg-[#0066FF] text-white font-bold text-sm shadow-[0_0_16px_rgba(0,102,255,0.35)] hover:bg-[#0052CC] disabled:opacity-50 disabled:shadow-none transition-all">
+          {loading ? <Loader2 size={16} className="animate-spin mx-auto" /> : `Place ${selections.length > 1 ? `${selections.length} Bets` : 'Bet'} · ₦${(chargeKobo / 100).toLocaleString()}`}
         </button>
       </div>
     </div>

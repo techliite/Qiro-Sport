@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { FootballService } from './football.service'
-import { FootballBetBody } from '../bet-bodies.dto'
+import { FootballBetBody, FootballMultiBody, FootballSinglesBody } from '../bet-bodies.dto'
 import { CurrentUser, AuthUser } from '../../auth/decorators/current-user.decorator'
 
 @Controller('virtual/football')
@@ -28,5 +28,17 @@ export class FootballController {
     @Body() body: FootballBetBody,
   ) {
     return this.footballService.placeBet({ userId: user.id, ...body })
+  }
+
+  /** Bet slip "Single": several single bets placed all-or-nothing */
+  @Post('bets')
+  placeSingles(@CurrentUser() user: AuthUser, @Body() body: FootballSinglesBody) {
+    return this.footballService.placeSingles(user.id, body.bets)
+  }
+
+  /** Bet slip "Multiple": one accumulator at combined odds */
+  @Post('multi-bet')
+  placeMulti(@CurrentUser() user: AuthUser, @Body() body: FootballMultiBody) {
+    return this.footballService.placeMulti(user.id, body.selections, body.stakeKobo)
   }
 }

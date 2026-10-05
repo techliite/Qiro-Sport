@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, OnModuleInit, Logger } from '@nestjs/common'
 import { Interval } from '@nestjs/schedule'
-import { prisma } from '@qiro/db'
+import { prisma, Prisma } from '@qiro/db'
 import { RoundStatus, BetStatus, TransactionType, WsEvent, GameType } from '@qiro/types'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { WalletService } from '../../wallet/wallet.service'
@@ -247,48 +247,75 @@ export class HorseRacingService implements OnModuleInit {
 
   // ── Bet placement ─────────────────────────────────────────────────────────
 
-  async placeBet(data: { userId: string; roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number }) {
-    if (!Number.isInteger(data.stakeKobo) || data.stakeKobo < MIN_STAKE_KOBO) throw new BadRequestException(`Min stake ₦${MIN_STAKE_KOBO / 100}`)
-    if (data.stakeKobo > MAX_STAKE_KOBO) throw new BadRequestException(`Max stake ₦${MAX_STAKE_KOBO / 100}`)
-
-    const race = await prisma.horseRaceRound.findUnique({ where: { id: data.roundId } })
+  /** Validates a selection against the open race and returns the server's odds for it. */
+  private async quoteHorse(roundId: string, horseId: number, market: 'win' | 'place') {
+    const race = await prisma.horseRaceRound.findUnique({ where: { id: roundId } })
     if (!race) throw new BadRequestException('Race not found')
     if (race.status !== RoundStatus.BETTING_OPEN) throw new BadRequestException('Betting is closed for this race')
-
-    const msToRace = new Date(race.cycleAt).getTime() - Date.now()
-    if (msToRace < 15_000) throw new BadRequestException('Betting closes 15 seconds before race time')
-
-    if (!(race.horseIds as number[]).includes(data.horseId)) {
-      throw new BadRequestException('Horse not in this race')
+    if (new Date(race.cycleAt).getTime() - Date.now() < 15_000) {
+      throw new BadRequestException('Betting closes 15 seconds before race time')
     }
+    if (!(race.horseIds as number[]).includes(horseId)) throw new BadRequestException('Horse not in this race')
 
     const horses = await prisma.virtualHorse.findMany({ where: { id: { in: race.horseIds as number[] } } })
     const odds = computeHorseOdds(horses.map((h) => ({ id: h.id, currentRating: Number(h.currentRating), form: h.form })))
-    const horseOdds = odds.find((o) => o.horseId === data.horseId)
+    const horseOdds = odds.find((o) => o.horseId === horseId)
     if (!horseOdds) throw new BadRequestException('Odds not found')
+    return market === 'win' ? horseOdds.winOdds : horseOdds.placeOdds
+  }
 
-    const oddsDecimal = data.market === 'win' ? horseOdds.winOdds : horseOdds.placeOdds
+  private assertStake(stakeKobo: number) {
+    if (!Number.isInteger(stakeKobo) || stakeKobo < MIN_STAKE_KOBO) throw new BadRequestException(`Min stake ₦${MIN_STAKE_KOBO / 100} per selection`)
+    if (stakeKobo > MAX_STAKE_KOBO) throw new BadRequestException(`Max stake ₦${MAX_STAKE_KOBO / 100} per selection`)
+  }
+
+  private async createBetInTx(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    b: { roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number; oddsDecimal: number },
+  ) {
     // Unique per bet — the old user:race:horse:market ref made a second bet on the same horse crash
-    const ref = `hr:stake:${randomUUID()}`
-
-    // Debit and bet creation commit together — a failed insert must not lose the stake
-    return prisma.$transaction(async (tx) => {
-      await this.walletService.debitInTx(tx, data.userId, data.stakeKobo, TransactionType.STAKE, ref, {
-        raceId: data.roundId, horseId: data.horseId, market: data.market,
-      })
-      return tx.virtualBet.create({
-        data: {
-          userId: data.userId,
-          gameType: GameType.HORSE_RACING,
-          roundId: data.roundId,
-          market: data.market,
-          pick: String(data.horseId), // horseId stored as pick; market = 'win' | 'place'
-          oddsDecimal,
-          stakeKobo: BigInt(data.stakeKobo),
-          status: BetStatus.PENDING,
-        },
-      })
+    await this.walletService.debitInTx(tx, userId, b.stakeKobo, TransactionType.STAKE, `hr:stake:${randomUUID()}`, {
+      raceId: b.roundId, horseId: b.horseId, market: b.market,
     })
+    return tx.virtualBet.create({
+      data: {
+        userId,
+        gameType: GameType.HORSE_RACING,
+        roundId: b.roundId,
+        market: b.market,
+        pick: String(b.horseId), // horseId stored as pick; market = 'win' | 'place'
+        oddsDecimal: b.oddsDecimal,
+        stakeKobo: BigInt(b.stakeKobo),
+        status: BetStatus.PENDING,
+      },
+    })
+  }
+
+  async placeBet(data: { userId: string; roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number }) {
+    this.assertStake(data.stakeKobo)
+    const oddsDecimal = await this.quoteHorse(data.roundId, data.horseId, data.market)
+    // Debit and bet creation commit together — a failed insert must not lose the stake
+    return prisma.$transaction((tx) => this.createBetInTx(tx, data.userId, { ...data, oddsDecimal }))
+  }
+
+  /** Bet slip "Single" — every selection its own bet, placed all-or-nothing. */
+  async placeSingles(userId: string, bets: { roundId: string; horseId: number; market: 'win' | 'place'; stakeKobo: number }[]) {
+    const keys = bets.map((b) => `${b.roundId}:${b.horseId}:${b.market}`)
+    if (new Set(keys).size !== keys.length) throw new BadRequestException('The same selection appears twice')
+    bets.forEach((b) => this.assertStake(b.stakeKobo))
+
+    const quoted = await Promise.all(bets.map(async (b) => ({ ...b, oddsDecimal: await this.quoteHorse(b.roundId, b.horseId, b.market) })))
+    const created = await prisma.$transaction(async (tx) => {
+      const out = []
+      for (const q of quoted) out.push(await this.createBetInTx(tx, userId, q))
+      return out
+    }, { timeout: 20_000 })
+
+    return {
+      bets: created.map((b) => ({ ...b, stakeKobo: Number(b.stakeKobo), oddsDecimal: Number(b.oddsDecimal) })),
+      totalStakeKobo: bets.reduce((sum, b) => sum + b.stakeKobo, 0),
+    }
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────

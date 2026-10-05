@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Query } from '@nestjs/common'
 import { HorseRacingService } from './horse-racing.service'
-import { HorseBetBody } from '../bet-bodies.dto'
+import { HorseBetBody, HorseSinglesBody } from '../bet-bodies.dto'
 import { CurrentUser, type AuthUser } from '../../auth/decorators/current-user.decorator'
 
 @Controller('virtual/horse-racing')
@@ -28,5 +28,11 @@ export class HorseRacingController {
     @Body() body: HorseBetBody,
   ) {
     return this.hrService.placeBet({ userId: user.id, ...body })
+  }
+
+  /** Bet slip "Single": several bets placed all-or-nothing */
+  @Post('bets')
+  placeSingles(@CurrentUser() user: AuthUser, @Body() body: HorseSinglesBody) {
+    return this.hrService.placeSingles(user.id, body.bets)
   }
 }

@@ -80,6 +80,7 @@ model User {
   wallet              Wallet?
   sportBets           SportBet[]
   virtualBets         VirtualBet[]
+  virtualMultiBets    VirtualMultiBet[]
   withdrawalRequests  WithdrawalRequest[]
 
   @@map("users")
@@ -185,6 +186,44 @@ model VirtualBet {
   @@map("virtual_bets")
 }
 
+// "Multiple" (accumulator) on virtual football: one stake at the combined odds of
+// selections from different matches. Every leg must win; any losing leg loses the bet.
+model VirtualMultiBet {
+  id               String    @id @default(uuid())
+  userId           String
+  stakeKobo        BigInt
+  totalOdds        Decimal   @db.Decimal(14, 4)
+  potentialWinKobo BigInt
+  payoutKobo       BigInt?
+  status           BetStatus @default(PENDING)
+  settledAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  user             User      @relation(fields: [userId], references: [id])
+  selections       VirtualMultiSelection[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("virtual_multi_bets")
+}
+
+model VirtualMultiSelection {
+  id          String    @id @default(uuid())
+  multiBetId  String
+  roundId     String
+  market      String
+  pick        String
+  oddsDecimal Decimal   @db.Decimal(8, 4)   // Locked at bet time from server odds
+  result      BetStatus @default(PENDING)
+
+  multiBet    VirtualMultiBet      @relation(fields: [multiBetId], references: [id])
+  round       VirtualFootballRound @relation(fields: [roundId], references: [id])
+
+  @@index([roundId, result])
+  @@index([multiBetId])
+  @@map("virtual_multi_selections")
+}
+
 // ─── Virtual Football ─────────────────────────────────────────────────────────
 
 model VirtualTeam {
@@ -219,6 +258,7 @@ model VirtualFootballRound {
 
   homeTeam     VirtualTeam   @relation("HomeTeam", fields: [homeTeamId], references: [id])
   awayTeam     VirtualTeam   @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  multiSelections VirtualMultiSelection[]
 
   @@index([league, status])
   @@index([cycleAt])
