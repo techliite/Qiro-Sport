@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { NestFactory } from '@nestjs/core'
 import { ValidationPipe } from '@nestjs/common'
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import cookieParser from 'cookie-parser'
 import { AppModule } from './app.module'
@@ -21,6 +22,15 @@ async function bootstrap() {
 
   app.use(cookieParser())
   app.setGlobalPrefix('api/v1')
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Qiro Sport API')
+    .setDescription('Qiro Sport API documentation')
+    .setVersion('1.0')
+    .addServer('/api/v1')
+    .build()
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig)
+  SwaggerModule.setup('api/docs', app, swaggerDocument)
 
   app.useGlobalPipes(
     new ValidationPipe({
