@@ -1,9 +1,16 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios'
+import { useAuthStore } from '@/store/auth.store'
 
 export const api = axios.create({
   // Same-origin by default — next.config.ts proxies /api/v1 to the API (see API_PROXY_TARGET)
   baseURL: process.env['NEXT_PUBLIC_API_URL'] || '/api/v1',
   withCredentials: true, // sends httpOnly refresh cookie
+})
+
+// A refresh 401 must reject the current attempt instead of entering this interceptor again.
+const refreshApi = axios.create({
+  baseURL: process.env['NEXT_PUBLIC_API_URL'] || '/api/v1',
+  withCredentials: true,
 })
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
@@ -25,12 +32,21 @@ function processQueue(error: unknown, token: string | null = null) {
   failedQueue = []
 }
 
+function clearSession() {
+  if (typeof window === 'undefined') return
+  useAuthStore.getState().clearAuth()
+  localStorage.removeItem('access_token')
+  window.location.replace('/login')
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const originalRequest = err.config as InternalAxiosRequestConfig & { _retry?: boolean }
 
-    if (err.response?.status !== 401 || originalRequest._retry) {
+    const requestUrl = originalRequest?.url ?? ''
+    const isAuthRequest = /\/auth\/(login|register|verify-otp|otp\/resend|refresh)/.test(requestUrl)
+    if (err.response?.status !== 401 || originalRequest?._retry || isAuthRequest) {
       return Promise.reject(err)
     }
 
@@ -49,12 +65,11 @@ api.interceptors.response.use(
     isRefreshing = true
 
     try {
-      const { data } = await api.post<{ accessToken: string | null }>('/auth/refresh')
+      const { data } = await refreshApi.post<{ accessToken: string | null }>('/auth/refresh')
 
       if (!data.accessToken) {
         // Refresh cookie expired — hard logout
-        localStorage.removeItem('access_token')
-        window.location.href = '/login'
+        clearSession()
         return Promise.reject(err)
       }
 
@@ -65,8 +80,7 @@ api.interceptors.response.use(
       return api(originalRequest)
     } catch (refreshError) {
       processQueue(refreshError, null)
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      clearSession()
       return Promise.reject(refreshError)
     } finally {
       isRefreshing = false
