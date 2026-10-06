@@ -253,11 +253,18 @@ export class FootballService implements OnModuleInit {
 
   async settleExpiredRounds() {
     const expired = await prisma.virtualFootballRound.findMany({
-      where: { status: RoundStatus.BETTING_OPEN, cycleAt: { lte: new Date() } },
+      where: {
+        status: { in: [RoundStatus.BETTING_OPEN, RoundStatus.IN_PROGRESS] },
+        cycleAt: { lte: new Date() },
+      },
       include: { homeTeam: true, awayTeam: true },
     })
     for (const round of expired) {
-      await this.settleRound(round)
+      try {
+        await this.settleRound(round)
+      } catch (err) {
+        this.logger.error(`Failed to settle virtual football round ${round.id}; it will be retried`, err)
+      }
     }
   }
 
@@ -266,11 +273,15 @@ export class FootballService implements OnModuleInit {
     if (!round) return
 
     // Atomic claim — prevent double settlement
-    const claimed = await prisma.virtualFootballRound.updateMany({
-      where: { id: round.id, status: RoundStatus.BETTING_OPEN },
-      data: { status: RoundStatus.IN_PROGRESS },
-    })
-    if (claimed.count === 0) return
+    if (round.status === RoundStatus.BETTING_OPEN) {
+      const claimed = await prisma.virtualFootballRound.updateMany({
+        where: { id: round.id, status: RoundStatus.BETTING_OPEN },
+        data: { status: RoundStatus.IN_PROGRESS },
+      })
+      if (claimed.count === 0) return
+    } else if (round.status !== RoundStatus.IN_PROGRESS) {
+      return
+    }
 
     const seed = round.rngSeed!
     const rand = mulberry32(hashToSeed(seed))
